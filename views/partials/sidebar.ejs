@@ -1,4 +1,28 @@
+<!-- Mobile Top Bar (hidden on desktop) -->
+<div class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Open menu">
+    <i class="bi bi-list"></i>
+  </button>
+  <span class="app-title">SUPER ALLIED</span>
+  <a href="/logout" class="btn btn-sm btn-outline-light ms-auto">
+    <i class="bi bi-box-arrow-right"></i>
+  </a>
+</div>
+
+<!-- Backdrop overlay (mobile only) -->
+<div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
 <nav id="sidebar" class="d-flex flex-column p-3 text-white">
+
+  <!-- Mobile close button row -->
+  <div class="d-flex justify-content-between align-items-center d-lg-none mb-2 pb-2 border-bottom border-secondary">
+    <span class="fw-semibold text-white-50 small text-uppercase" style="font-size:11px">Menu</span>
+    <button onclick="toggleSidebar()" class="btn btn-sm text-white border-0 p-0">
+      <i class="bi bi-x-lg fs-5"></i>
+    </button>
+  </div>
+
   <a href="/" class="d-flex align-items-center mb-3 text-white text-decoration-none gap-2">
     <div class="brand-logo flex-shrink-0">SA</div>
     <div>
@@ -10,44 +34,80 @@
     <img src="/bull-logo.jpg" alt="Bull" style="height:36px;opacity:0.9;border-radius:4px;" onerror="this.style.display='none'">
   </div>
   <hr class="border-secondary mt-0">
+
   <ul class="nav flex-column mb-auto">
     <li class="nav-item">
-      <a href="/" class="nav-link text-white <%= active==='dashboard'?'active':'' %>">
+      <a href="/" class="nav-link text-white <%= active==='dashboard'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
       </a>
     </li>
     <li class="nav-item">
-      <a href="/customers" class="nav-link text-white <%= active==='customers'?'active':'' %>">
+      <a href="/customers" class="nav-link text-white <%= active==='customers'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-people me-2"></i>Customers
       </a>
     </li>
     <li class="nav-item">
-      <a href="/quotations" class="nav-link text-white <%= active==='quotations'?'active':'' %>">
+      <a href="/quotations" class="nav-link text-white <%= active==='quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-file-earmark-text me-2"></i>Quotations
       </a>
     </li>
     <li class="nav-item">
-      <a href="/machines" class="nav-link text-white <%= active==='machines'?'active':'' %>">
+      <a href="/machines" class="nav-link text-white <%= active==='machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-gear me-2"></i>Machines
       </a>
     </li>
+
+    <% if (user && user.role === 'admin') { %>
     <li class="nav-item mt-3">
-      <a href="/calculator" class="nav-link text-white <%= active==='calculator'?'active':'' %>">
+      <a href="/calculator" class="nav-link text-white <%= active==='calculator'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-calculator me-2"></i>Profit Calculator
       </a>
     </li>
-    <li class="nav-item">
-      <a href="/settings" class="nav-link text-white <%= active==='settings'?'active':'' %>">
+    <% } %>
+
+    <li class="nav-item <%= user && user.role !== 'admin' ? 'mt-3' : '' %>">
+      <a href="/settings" class="nav-link text-white <%= active==='settings'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-sliders me-2"></i>Settings
       </a>
     </li>
+
+    <% if (user && user.role === 'admin') { %>
+    <li class="nav-item">
+      <a href="/users" class="nav-link text-white <%= active==='users'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-person-badge me-2"></i>Users
+      </a>
+    </li>
+    <% } %>
   </ul>
+
   <hr class="border-secondary">
-  <div class="d-flex align-items-center">
-    <div class="flex-grow-1">
-      <small class="text-white-50">Logged in as</small><br>
-      <span class="fw-semibold"><%= user ? user.full_name || user.username : '' %></span>
+  <div class="d-flex align-items-center gap-2">
+    <div class="flex-grow-1" style="min-width:0">
+      <small class="text-white-50" style="font-size:10px">Logged in as</small><br>
+      <span class="fw-semibold text-truncate d-block" style="max-width:150px">
+        <%= user ? user.full_name || user.username : '' %>
+      </span>
+      <% if (user && user.role === 'admin') { %>
+        <span class="badge bg-danger" style="font-size:9px">ADMIN</span>
+      <% } else { %>
+        <span class="badge bg-primary" style="font-size:9px">SALES STAFF</span>
+      <% } %>
     </div>
-    <a href="/logout" class="btn btn-sm btn-outline-light"><i class="bi bi-box-arrow-right"></i></a>
+    <a href="/logout" class="btn btn-sm btn-outline-light flex-shrink-0 d-none d-lg-inline-flex">
+      <i class="bi bi-box-arrow-right"></i>
+    </a>
   </div>
 </nav>
+
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('sidebar-open');
+  document.getElementById('sidebarBackdrop').classList.toggle('show');
+}
+function closeSidebarOnMobile() {
+  if (window.innerWidth < 992) {
+    document.getElementById('sidebar').classList.remove('sidebar-open');
+    document.getElementById('sidebarBackdrop').classList.remove('show');
+  }
+}
+</script>

@@ -1,142 +1,162 @@
-/* Layout */
-body {
-  display: flex;
-  min-height: 100vh;
-  background: #f5f6fa;
+/* ── Base ───────────────────────────────────────────────────── */
+body { background: #f5f6fa; min-height: 100vh; }
+
+/* ── Mobile Top Bar ─────────────────────────────────────────── */
+.mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: #1a1d2e;
+  z-index: 1045;
+  padding: 0 16px;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.mobile-topbar .app-title {
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+.hamburger-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
 }
 
+/* ── Sidebar Backdrop (mobile) ──────────────────────────────── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1049;
+  cursor: pointer;
+}
+.sidebar-backdrop.show { display: block; }
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
 #sidebar {
   width: 240px;
   min-height: 100vh;
   background: #1a1d2e;
-  flex-shrink: 0;
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: 0; left: 0; bottom: 0;
   overflow-y: auto;
-  z-index: 100;
+  z-index: 1050;
+  transition: transform 0.25s ease;
 }
-
 .brand-logo {
-  width: 40px;
-  height: 40px;
-  background: #cc0000;
-  color: #fff;
+  width: 40px; height: 40px;
+  background: #cc0000; color: #fff;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 14px;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px; flex-shrink: 0;
 }
-
 #sidebar .nav-link {
   border-radius: 8px;
   padding: 9px 12px;
   font-size: 14px;
   transition: background 0.15s;
 }
-
 #sidebar .nav-link:hover,
-#sidebar .nav-link.active {
-  background: rgba(255, 255, 255, 0.12);
-}
+#sidebar .nav-link.active { background: rgba(255,255,255,0.12); }
 
+/* ── Main Content ────────────────────────────────────────────── */
 .main-content {
   margin-left: 240px;
-  flex: 1;
   padding: 28px 32px;
   min-height: 100vh;
 }
 
-/* Page header */
+/* ── Page Header ─────────────────────────────────────────────── */
 .page-header {
   padding-bottom: 16px;
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 24px;
 }
 
-/* Stat cards */
-.stat-card .card-body {
-  padding: 20px 16px;
-}
-
+/* ── Stat Cards ──────────────────────────────────────────────── */
+.stat-card .card-body { padding: 20px 16px; }
 .stat-icon {
-  width: 52px;
-  height: 52px;
+  width: 52px; height: 52px;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   margin: 0 auto 10px;
 }
 
-/* Login page */
+/* ── Login Page ──────────────────────────────────────────────── */
 .login-page {
   background: linear-gradient(135deg, #1a1d2e 0%, #2d3250 100%);
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
 
-/* Tables */
+/* ── Tables ──────────────────────────────────────────────────── */
 .table th {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
+  font-size: 12px; font-weight: 600;
+  color: #6b7280; text-transform: uppercase;
+  letter-spacing: 0.5px; white-space: nowrap;
 }
+.table td { vertical-align: middle; }
 
-.table td {
-  vertical-align: middle;
-}
-
-/* Cards */
-.card {
-  border-radius: 12px;
-}
-
+/* ── Cards ───────────────────────────────────────────────────── */
+.card { border-radius: 12px; }
 .card-header {
   border-radius: 12px 12px 0 0 !important;
-  font-size: 14px;
-  padding: 14px 18px;
+  font-size: 14px; padding: 14px 18px;
 }
 
-/* Buttons */
-.btn-danger {
-  background-color: #cc0000;
-  border-color: #cc0000;
-}
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn-danger { background-color: #cc0000; border-color: #cc0000; }
+.btn-danger:hover { background-color: #aa0000; border-color: #aa0000; }
 
-.btn-danger:hover {
-  background-color: #aa0000;
-  border-color: #aa0000;
-}
+/* ── Badges ──────────────────────────────────────────────────── */
+.badge { font-size: 11px; font-weight: 500; }
 
-/* Badges */
-.badge {
-  font-size: 11px;
-  font-weight: 500;
-}
+/* ── Monospace ───────────────────────────────────────────────── */
+.font-monospace { font-family: 'Courier New', monospace; font-size: 12px; }
 
-/* Font monospace for codes */
-.font-monospace {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-}
+/* ── Mobile Breakpoint ───────────────────────────────────────── */
+@media (max-width: 991.98px) {
+  .mobile-topbar { display: flex; }
 
-/* Responsive */
-@media (max-width: 768px) {
-  #sidebar {
-    width: 200px;
-  }
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.sidebar-open { transform: translateX(0); }
+
   .main-content {
-    margin-left: 200px;
+    margin-left: 0;
     padding: 16px;
+    padding-top: 72px;
   }
+
+  /* Stack page header on mobile */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+
+  /* Larger touch targets in sidebar */
+  #sidebar .nav-link { padding: 11px 14px; font-size: 15px; }
+
+  /* Wrap action buttons */
+  .page-header .d-flex { flex-wrap: wrap; }
+}
+
+@media (max-width: 575.98px) {
+  .main-content { padding: 12px; padding-top: 68px; }
+  .page-header h4 { font-size: 1.1rem; }
+
+  /* Stack filter form inputs */
+  .card-body .d-flex.gap-2 { flex-direction: column; }
+  .card-body .d-flex.gap-2 .form-control,
+  .card-body .d-flex.gap-2 .form-select { max-width: 100% !important; }
 }

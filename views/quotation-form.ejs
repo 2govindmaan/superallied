@@ -1,5 +1,6 @@
 <%- include('partials/head', { title }) %>
 <%- include('partials/sidebar', { active: 'quotations', user }) %>
+<% const isAdmin = user && user.role === 'admin'; %>
 <div class="main-content">
   <div class="page-header d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0 fw-bold"><%= quotation ? 'Edit Quotation '+quotation.quotation_number : 'New Quotation' %></h4>
@@ -47,19 +48,30 @@
                 <% machines.filter(m=>m.model_series===s).forEach(m => { %>
                 <option value="<%= m.id %>" data-price="<%= m.basic_price %>"
                   <%= quotation?.machine_id==m.id ? 'selected' : '' %>>
-                  <%= m.display_name %> — ₹<%= formatINR(m.basic_price) %>
+                  <%= m.display_name %><% if(isAdmin){ %> — ₹<%= formatINR(m.basic_price) %><% } %>
                 </option>
                 <% }) %>
               </optgroup>
               <% }) %>
             </select>
             <div class="row mt-3 g-2">
+              <% if (isAdmin) { %>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Basic Price (₹) <span class="text-danger">*</span></label>
                 <input type="number" name="basic_price" id="basic_price" class="form-control"
                        value="<%= quotation?.basic_price || '' %>" required oninput="calcTotals()">
                 <small class="text-muted">Auto-filled from catalog, override if needed</small>
               </div>
+              <% } else { %>
+              <div class="col-md-6">
+                <input type="hidden" name="basic_price" id="basic_price" value="<%= quotation?.basic_price || '' %>">
+                <label class="form-label fw-semibold">Selling Price</label>
+                <div class="form-control bg-light text-muted" id="basic_price_display">
+                  <%= quotation?.basic_price ? '₹' + formatINR(quotation.basic_price) : 'Select a machine ↑' %>
+                </div>
+                <small class="text-muted">Auto-set from catalog</small>
+              </div>
+              <% } %>
               <div class="col-md-3">
                 <label class="form-label fw-semibold">Quantity</label>
                 <input type="number" name="quantity" id="quantity" class="form-control" min="1" value="<%= quotation?.quantity || 1 %>" oninput="calcTotals()">
@@ -182,7 +194,8 @@
       <div class="col-lg-5">
         <div class="card border-0 shadow-sm sticky-top" style="top:20px">
 
-          <!-- Mode toggle -->
+          <!-- Mode toggle (admin only) -->
+          <% if (isAdmin) { %>
           <div class="card-header bg-danger text-white p-0">
             <div class="d-flex">
               <button type="button" id="btn_forward" onclick="setMode('forward')"
@@ -209,6 +222,11 @@
               Apply this Basic Price ↓
             </button>
           </div>
+          <% } else { %>
+          <div class="card-header bg-danger text-white fw-semibold py-2">
+            <i class="bi bi-calculator me-1"></i>Live Calculation
+          </div>
+          <% } %>
 
           <!-- Live Calculation Table -->
           <div class="card-body p-3">
@@ -307,12 +325,17 @@ function calcTotals(){
   document.getElementById('row_tcs').classList.toggle('d-none', !hasTcs);
 }
 
+const STAFF_MARKUP = <%- isAdmin ? 0 : 400000 %>;
+
 function loadMachine(id){
   if(!id) return;
   fetch('/api/machines/'+id)
     .then(r=>r.json())
     .then(m=>{
-      document.getElementById('basic_price').value = m.basic_price;
+      const price = m.basic_price + STAFF_MARKUP;
+      document.getElementById('basic_price').value = price;
+      const disp = document.getElementById('basic_price_display');
+      if(disp) disp.textContent = '₹' + price.toLocaleString('en-IN');
       calcTotals();
     });
 }

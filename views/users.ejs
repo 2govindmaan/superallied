@@ -1,0 +1,65 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'users', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2 text-danger"></i>Users</h4>
+    <a href="/users/new" class="btn btn-danger"><i class="bi bi-plus-lg me-1"></i>Add Staff</a>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error)   { %><div class="alert alert-danger  alert-dismissible"><%= flash.error   %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(u => { %>
+          <tr>
+            <td class="fw-semibold font-monospace"><%= u.username %></td>
+            <td><%= u.full_name || '—' %></td>
+            <td>
+              <% if (u.role === 'admin') { %>
+                <span class="badge bg-danger">Admin</span>
+              <% } else { %>
+                <span class="badge bg-primary">Sales Staff</span>
+              <% } %>
+            </td>
+            <td class="text-muted small"><%= new Date(u.created_at).toLocaleDateString('en-IN') %></td>
+            <td class="text-end">
+              <% if (u.id !== user.id) { %>
+              <form method="POST" action="/users/<%= u.id %>/delete" class="d-inline"
+                    onsubmit="return confirm('Delete user <%= u.username %>? This cannot be undone.')">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+              </form>
+              <% } else { %>
+              <span class="text-muted small">(you)</span>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!users.length) { %>
+          <tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="alert alert-info mt-4 small">
+    <i class="bi bi-info-circle me-1"></i>
+    <strong>Staff accounts</strong> can create quotations and manage customers.
+    They cannot view dealer prices, edit the machine catalog, or access the Profit Calculator.
+    Their quotations are priced at <strong>standard markup</strong> automatically.
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

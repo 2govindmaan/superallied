@@ -1,0 +1,55 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'users', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-person-plus me-2 text-danger"></i>Add Staff Account</h4>
+    <a href="/users" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <% if (flash.error) { %><div class="alert alert-danger"><%= flash.error %></div><% } %>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-5 col-md-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <form method="POST" action="/users">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+              <input type="text" name="username" class="form-control" required
+                     placeholder="e.g. rahul.sales" autocomplete="off">
+              <small class="text-muted">Used to log in. No spaces, lowercase preferred.</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Full Name</label>
+              <input type="text" name="full_name" class="form-control"
+                     placeholder="e.g. Rahul Sharma">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Role</label>
+              <select name="role" class="form-select">
+                <option value="staff" selected>Sales Staff</option>
+                <option value="admin">Admin</option>
+              </select>
+              <small class="text-muted">Staff = limited access. Admin = full access including prices.</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+              <input type="password" name="password" class="form-control" required
+                     autocomplete="new-password" minlength="6" placeholder="Min. 6 characters">
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+              <input type="password" name="confirm" class="form-control" required
+                     autocomplete="new-password" placeholder="Repeat password">
+            </div>
+            <button type="submit" class="btn btn-danger w-100 fw-bold">
+              <i class="bi bi-person-plus me-1"></i>Create Account
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

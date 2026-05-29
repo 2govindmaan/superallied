@@ -46,6 +46,16 @@ function requireLogin(req, res, next) {
   res.redirect('/login');
 }
 
+// Admin-only guard
+function requireAdmin(req, res, next) {
+  const user = req.session.userId
+    ? db.prepare('SELECT role FROM users WHERE id = ?').get(req.session.userId)
+    : null;
+  if (user && user.role === 'admin') return next();
+  req.session.flash = { error: 'Admin access required.' };
+  res.redirect('/');
+}
+
 // Inject current user + settings into all views
 app.use((req, res, next) => {
   res.locals.user = req.session.userId
@@ -300,7 +310,7 @@ app.get('/machines', requireLogin, (req, res) => {
   res.render('machines', { title: 'Machine Catalog', machines, formatINR });
 });
 
-app.post('/machines/:id', requireLogin, (req, res) => {
+app.post('/machines/:id', requireLogin, requireAdmin, (req, res) => {
   const { basic_price, display_name, engine, transmission, front_tyre, rear_tyre,
           battery, weight, bucket, warranty, active } = req.body;
   db.prepare(`UPDATE machines SET basic_price=?,display_name=?,engine=?,transmission=?,
@@ -312,8 +322,8 @@ app.post('/machines/:id', requireLogin, (req, res) => {
   res.redirect('/machines');
 });
 
-// ── Calculator ────────────────────────────────────────────────────────────────
-app.get('/calculator', requireLogin, (req, res) => {
+// ── Calculator (admin only) ───────────────────────────────────────────────────
+app.get('/calculator', requireLogin, requireAdmin, (req, res) => {
   const machines = db.prepare('SELECT id, display_name, model_series, basic_price FROM machines WHERE active = 1 ORDER BY model_series, display_name').all();
   res.render('calculator', { title: 'Profit Calculator', machines, formatINR });
 });
@@ -347,6 +357,52 @@ app.post('/settings/password', requireLogin, (req, res) => {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newpwd, 10), user.id);
   req.session.flash = { success: 'Password changed.' };
   res.redirect('/settings');
+});
+
+// ── Users (admin only) ────────────────────────────────────────────────────────
+app.get('/users', requireLogin, requireAdmin, (req, res) => {
+  const users = db.prepare('SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at').all();
+  res.render('users', { title: 'Users', users });
+});
+
+app.get('/users/new', requireLogin, requireAdmin, (req, res) => {
+  res.render('user-form', { title: 'New User' });
+});
+
+app.post('/users', requireLogin, requireAdmin, (req, res) => {
+  const { username, full_name, role, password, confirm } = req.body;
+  if (!username?.trim() || !password) {
+    req.session.flash = { error: 'Username and password are required.' };
+    return res.redirect('/users/new');
+  }
+  if (password !== confirm) {
+    req.session.flash = { error: 'Passwords do not match.' };
+    return res.redirect('/users/new');
+  }
+  if (password.length < 6) {
+    req.session.flash = { error: 'Password must be at least 6 characters.' };
+    return res.redirect('/users/new');
+  }
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim())) {
+    req.session.flash = { error: `Username "${username.trim()}" is already taken.` };
+    return res.redirect('/users/new');
+  }
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare('INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)')
+    .run(username.trim(), hash, full_name?.trim() || '', role === 'admin' ? 'admin' : 'staff');
+  req.session.flash = { success: `User "${username.trim()}" created successfully.` };
+  res.redirect('/users');
+});
+
+app.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
+  if (+req.params.id === req.session.userId) {
+    req.session.flash = { error: 'You cannot delete your own account.' };
+    return res.redirect('/users');
+  }
+  const u = db.prepare('SELECT username FROM users WHERE id = ?').get(req.params.id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  req.session.flash = { success: `User "${u?.username}" deleted.` };
+  res.redirect('/users');
 });
 
 // ── API ───────────────────────────────────────────────────────────────────────
