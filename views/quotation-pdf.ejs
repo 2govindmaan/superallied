@@ -181,13 +181,14 @@
       <% } %>
 
       <tr class="row-bold">
-        <td></td><td>Sub Total</td><td></td><td class="col-price"><%= formatINR(calc.total) %></td>
+        <td></td><td>Sub Total</td><td></td><td class="col-price"><%= formatINR(calc.subTotal) %></td>
       </tr>
       <tr>
         <td></td><td>Insurance including IMT-23</td><td></td><td class="col-price"><%= q.insurance %></td>
       </tr>
       <tr>
-        <td></td><td>TRC / RTO Charges</td><td></td><td class="col-price"><%= q.trc %></td>
+        <td></td><td>TRC / RTO Charges</td><td></td>
+        <td class="col-price"><%= calc.trcAmount > 0 ? formatINR(calc.trcAmount) : 'INCLUSIVE' %></td>
       </tr>
 
       <!-- Amount in words -->

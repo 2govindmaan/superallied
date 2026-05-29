@@ -88,19 +88,31 @@ app.get('/logout', (req, res) => {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 app.get('/', requireLogin, (req, res) => {
+  const isAdmin = res.locals.user?.role === 'admin';
+  const uid = req.session.userId;
+
   const stats = {
     customers: db.prepare('SELECT COUNT(*) as c FROM customers').get().c,
-    quotations: db.prepare('SELECT COUNT(*) as c FROM quotations').get().c,
-    thisMonth: db.prepare("SELECT COUNT(*) as c FROM quotations WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get().c,
+    quotations: isAdmin
+      ? db.prepare('SELECT COUNT(*) as c FROM quotations').get().c
+      : db.prepare('SELECT COUNT(*) as c FROM quotations WHERE user_id = ?').get(uid).c,
+    thisMonth: isAdmin
+      ? db.prepare("SELECT COUNT(*) as c FROM quotations WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get().c
+      : db.prepare("SELECT COUNT(*) as c FROM quotations WHERE user_id = ? AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get(uid).c,
     machines: db.prepare('SELECT COUNT(*) as c FROM machines WHERE active = 1').get().c,
   };
-  const recent = db.prepare(`
+
+  const recentSql = `
     SELECT q.*, c.name as customer_name, m.display_name as machine_name
     FROM quotations q
     JOIN customers c ON c.id = q.customer_id
     JOIN machines m  ON m.id = q.machine_id
-    ORDER BY q.created_at DESC LIMIT 8
-  `).all();
+    ${isAdmin ? '' : 'WHERE q.user_id = ?'}
+    ORDER BY q.created_at DESC LIMIT 8`;
+  const recent = isAdmin
+    ? db.prepare(recentSql).all()
+    : db.prepare(recentSql).all(uid);
+
   res.render('dashboard', { title: 'Dashboard', stats, recent, formatINR });
 });
 
@@ -152,6 +164,7 @@ app.post('/customers/:id/delete', requireLogin, (req, res) => {
 
 // ── Quotations ────────────────────────────────────────────────────────────────
 app.get('/quotations', requireLogin, (req, res) => {
+  const isAdmin = res.locals.user?.role === 'admin';
   const { status, q } = req.query;
   let sql = `SELECT qo.*, c.name as customer_name, m.display_name as machine_name
              FROM quotations qo
@@ -159,8 +172,9 @@ app.get('/quotations', requireLogin, (req, res) => {
              JOIN machines m  ON m.id = qo.machine_id`;
   const params = [];
   const conds = [];
-  if (status) { conds.push('qo.status = ?'); params.push(status); }
-  if (q) { conds.push('(c.name LIKE ? OR qo.quotation_number LIKE ?)'); params.push(`%${q}%`, `%${q}%`); }
+  if (!isAdmin) { conds.push('qo.user_id = ?'); params.push(req.session.userId); }
+  if (status)   { conds.push('qo.status = ?'); params.push(status); }
+  if (q)        { conds.push('(c.name LIKE ? OR qo.quotation_number LIKE ?)'); params.push(`%${q}%`, `%${q}%`); }
   if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
   sql += ' ORDER BY qo.created_at DESC';
   const quotations = db.prepare(sql).all(...params);
@@ -210,6 +224,7 @@ app.post('/quotations', requireLogin, (req, res) => {
 });
 
 app.get('/quotations/:id', requireLogin, (req, res) => {
+  const isAdmin = res.locals.user?.role === 'admin';
   const q = db.prepare(`
     SELECT qo.*, c.name as customer_name, c.phone as customer_phone,
            c.address as customer_address, c.city as customer_city,
@@ -223,6 +238,7 @@ app.get('/quotations/:id', requireLogin, (req, res) => {
     JOIN machines m  ON m.id = qo.machine_id
     WHERE qo.id = ?`).get(req.params.id);
   if (!q) return res.redirect('/quotations');
+  if (!isAdmin && q.user_id !== req.session.userId) return res.redirect('/quotations');
   const calc = calcQuotation(q);
   res.render('quotation-view', { title: `Quotation ${q.quotation_number}`, q, calc, formatINR });
 });

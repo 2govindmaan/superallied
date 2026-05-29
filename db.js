@@ -356,10 +356,13 @@ function calcQuotation(q) {
     cgst = base * (q.cgst_rate || 9) / 100;
     sgst = base * (q.sgst_rate || 9) / 100;
   }
-  const preTcs = base + cgst + sgst + igst;
-  const tcs    = q.has_tcs ? Math.round(preTcs * (q.tcs_rate || 1) / 100) : 0;
-  const total  = preTcs + tcs;
-  return { basic, transitInsurance: ins, base, cgst, sgst, igst, preTcs, tcs, total,
+  const preTcs    = base + cgst + sgst + igst;
+  const tcs       = q.has_tcs ? Math.round(preTcs * (q.tcs_rate || 1) / 100) : 0;
+  const subTotal  = preTcs + tcs;
+  const trcAmount = parseFloat(q.trc) || 0;
+  const total     = subTotal + trcAmount;
+  return { basic, transitInsurance: ins, base, cgst, sgst, igst, preTcs, tcs,
+           subTotal, trcAmount, total,
            amountWords: numberToWords(Math.round(total)) };
 }
 

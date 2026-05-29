@@ -140,9 +140,9 @@
                        value="<%= quotation?.insurance || 'INCLUSIVE' %>">
               </div>
               <div class="col-md-6">
-                <label class="form-label small">TRC / RTO Charges</label>
-                <input type="text" name="trc" class="form-control form-control-sm"
-                       value="<%= quotation?.trc || 'INCLUSIVE' %>">
+                <label class="form-label small">TRC / RTO Charges (₹)</label>
+                <input type="number" name="trc" id="trc" class="form-control form-control-sm"
+                       value="<%= parseFloat(quotation?.trc) || 0 %>" min="0" oninput="calcTotals()">
               </div>
             </div>
           </div>
@@ -239,6 +239,8 @@
               <tr id="row_igst" class="d-none"><td class="text-muted" id="lbl_igst">IGST @ 18%</td><td class="text-end" id="c_igst">—</td></tr>
               <tr class="table-warning fw-bold"><td>Total (pre-TCS)</td><td class="text-end" id="c_pretcs">—</td></tr>
               <tr id="row_tcs"><td class="text-muted" id="lbl_tcs">TCS @ 1%</td><td class="text-end" id="c_tcs">—</td></tr>
+              <tr class="table-secondary fw-semibold"><td>Sub Total</td><td class="text-end" id="c_subtotal">—</td></tr>
+              <tr id="row_trc"><td class="text-muted">TRC / RTO Charges</td><td class="text-end" id="c_trc">—</td></tr>
               <tr class="table-danger fw-bold"><td>Grand Total</td><td class="text-end fs-6" id="c_total">—</td></tr>
             </table>
             <div class="mt-3 p-2 bg-light rounded">
@@ -296,7 +298,8 @@ function calcTotals(){
   const sr  = parseFloat(document.getElementById('sgst_rate').value)||0;
   const ir  = parseFloat(document.getElementById('igst_rate').value)||0;
   const hasTcs = document.getElementById('has_tcs').checked;
-  const tr  = parseFloat(document.getElementById('tcs_rate').value)||0;
+  const tr   = parseFloat(document.getElementById('tcs_rate').value)||0;
+  const trcV = parseFloat(document.getElementById('trc').value)||0;
 
   const basic = bp * qty;
   const ins   = ti * qty;
@@ -304,28 +307,32 @@ function calcTotals(){
   let cgst=0, sgst=0, igstAmt=0;
   if(igst){ igstAmt = base*ir/100; }
   else     { cgst = base*cr/100; sgst = base*sr/100; }
-  const preTcs = base + cgst + sgst + igstAmt;
-  const tcs    = hasTcs ? Math.round(preTcs*tr/100) : 0;
-  const total  = preTcs + tcs;
+  const preTcs   = base + cgst + sgst + igstAmt;
+  const tcs      = hasTcs ? Math.round(preTcs*tr/100) : 0;
+  const subTotal = preTcs + tcs;
+  const total    = subTotal + trcV;
 
-  document.getElementById('c_basic').textContent  = inr(basic);
-  document.getElementById('c_ins').textContent    = inr(ins);
-  document.getElementById('c_base').textContent   = inr(base);
-  document.getElementById('lbl_cgst').textContent = `CGST @ ${cr}%`;
-  document.getElementById('c_cgst').textContent   = inr(cgst);
-  document.getElementById('lbl_sgst').textContent = `SGST @ ${sr}%`;
-  document.getElementById('c_sgst').textContent   = inr(sgst);
-  document.getElementById('lbl_igst').textContent = `IGST @ ${ir}%`;
-  document.getElementById('c_igst').textContent   = inr(igstAmt);
-  document.getElementById('c_pretcs').textContent = inr(preTcs);
-  document.getElementById('lbl_tcs').textContent  = `TCS @ ${tr}%`;
-  document.getElementById('c_tcs').textContent    = inr(tcs);
-  document.getElementById('c_total').textContent  = inr(total);
-  document.getElementById('c_words').textContent  = n2w(total);
+  document.getElementById('c_basic').textContent    = inr(basic);
+  document.getElementById('c_ins').textContent      = inr(ins);
+  document.getElementById('c_base').textContent     = inr(base);
+  document.getElementById('lbl_cgst').textContent   = `CGST @ ${cr}%`;
+  document.getElementById('c_cgst').textContent     = inr(cgst);
+  document.getElementById('lbl_sgst').textContent   = `SGST @ ${sr}%`;
+  document.getElementById('c_sgst').textContent     = inr(sgst);
+  document.getElementById('lbl_igst').textContent   = `IGST @ ${ir}%`;
+  document.getElementById('c_igst').textContent     = inr(igstAmt);
+  document.getElementById('c_pretcs').textContent   = inr(preTcs);
+  document.getElementById('lbl_tcs').textContent    = `TCS @ ${tr}%`;
+  document.getElementById('c_tcs').textContent      = inr(tcs);
+  document.getElementById('c_subtotal').textContent = inr(subTotal);
+  document.getElementById('c_trc').textContent      = inr(trcV);
+  document.getElementById('c_total').textContent    = inr(total);
+  document.getElementById('c_words').textContent    = n2w(total);
   document.getElementById('row_tcs').classList.toggle('d-none', !hasTcs);
+  document.getElementById('row_trc').classList.toggle('d-none', trcV === 0);
 }
 
-const STAFF_MARKUP = <%- isAdmin ? 0 : 400000 %>;
+const STAFF_MARKUP = <%- isAdmin ? 0 : 500000 %>;
 
 function loadMachine(id){
   if(!id) return;

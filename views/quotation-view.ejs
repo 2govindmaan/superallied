@@ -61,9 +61,10 @@
             <% if (q.has_tcs) { %>
             <tr><td>TCS @ <%= q.tcs_rate %>%</td><td class="text-end">₹<%= formatINR(calc.tcs) %></td></tr>
             <% } %>
-            <tr class="table-danger fw-bold"><td>Grand Total</td><td class="text-end">₹<%= formatINR(calc.total) %></td></tr>
+            <tr class="table-secondary fw-semibold"><td>Sub Total</td><td class="text-end">₹<%= formatINR(calc.subTotal) %></td></tr>
             <tr><td>Insurance (IMT-23)</td><td class="text-end"><%= q.insurance %></td></tr>
-            <tr><td>TRC</td><td class="text-end"><%= q.trc %></td></tr>
+            <tr><td>TRC / RTO Charges</td><td class="text-end"><%= calc.trcAmount > 0 ? '₹' + formatINR(calc.trcAmount) : 'INCLUSIVE' %></td></tr>
+            <tr class="table-danger fw-bold"><td>Grand Total</td><td class="text-end">₹<%= formatINR(calc.total) %></td></tr>
           </table>
           <p class="mt-3 mb-0 fst-italic text-muted">Amount in words: <strong><%= calc.amountWords %></strong></p>
         </div>
