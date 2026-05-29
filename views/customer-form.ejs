@@ -1,0 +1,62 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'customers', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><%= customer ? 'Edit Customer' : 'New Customer' %></h4>
+    <a href="/customers" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <% if (flash.error) { %><div class="alert alert-danger"><%= flash.error %></div><% } %>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <form method="POST" action="<%= customer ? '/customers/'+customer.id : '/customers' %>">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Customer Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required
+                   value="<%= customer?.name || '' %>" placeholder="Full company or person name">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Phone</label>
+            <input type="text" name="phone" class="form-control"
+                   value="<%= customer?.phone || '' %>" placeholder="10-digit mobile">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Address</label>
+            <textarea name="address" class="form-control" rows="2"
+                      placeholder="Full address"><%= customer?.address || '' %></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">City</label>
+            <input type="text" name="city" class="form-control" value="<%= customer?.city || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">State</label>
+            <input type="text" name="state" class="form-control" value="<%= customer?.state || '' %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">GSTIN</label>
+            <input type="text" name="gstin" class="form-control font-monospace"
+                   value="<%= customer?.gstin || '' %>" placeholder="15-digit GSTIN" maxlength="15">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">HP With (Hire Purchase Bank)</label>
+            <input type="text" name="hp_with" class="form-control"
+                   value="<%= customer?.hp_with || '' %>" placeholder="e.g. HDFC Bank, SBI...">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Notes</label>
+            <input type="text" name="notes" class="form-control" value="<%= customer?.notes || '' %>">
+          </div>
+          <div class="col-12 mt-2">
+            <button class="btn btn-danger px-4"><i class="bi bi-check-lg me-1"></i><%= customer ? 'Update' : 'Save' %> Customer</button>
+            <a href="/customers" class="btn btn-outline-secondary ms-2">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

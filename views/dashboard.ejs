@@ -1,0 +1,100 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'dashboard', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold">Dashboard</h4>
+    <a href="/quotations/new" class="btn btn-danger">
+      <i class="bi bi-plus-lg me-1"></i>New Quotation
+    </a>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error) { %><div class="alert alert-danger alert-dismissible"><%= flash.error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-file-earmark-text fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= stats.quotations %></h3>
+          <small class="text-muted">Total Quotations</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-calendar-month fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= stats.thisMonth %></h3>
+          <small class="text-muted">This Month</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-people fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= stats.customers %></h3>
+          <small class="text-muted">Customers</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-gear fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= stats.machines %></h3>
+          <small class="text-muted">Active Machines</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Recent Quotations</span>
+      <a href="/quotations" class="btn btn-sm btn-outline-secondary">View All</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Quot. No.</th><th>Customer</th><th>Machine</th><th>Amount</th><th>Status</th><th>Date</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% recent.forEach(q => {
+               const c = { basic_price: q.basic_price, quantity: q.quantity, transit_insurance: q.transit_insurance,
+                           tax_mode: q.tax_mode, cgst_rate: q.cgst_rate, sgst_rate: q.sgst_rate, igst_rate: q.igst_rate,
+                           has_tcs: q.has_tcs, tcs_rate: q.tcs_rate };
+               const total = (() => {
+                 const base = c.basic_price * c.quantity + (c.transit_insurance||2000)*c.quantity;
+                 let tax = 0;
+                 if (c.tax_mode==='IGST') tax = base*(c.igst_rate||18)/100;
+                 else tax = base*(c.cgst_rate||9)/100 + base*(c.sgst_rate||9)/100;
+                 const preTcs = c.basic_price*c.quantity + tax;
+                 return preTcs + (c.has_tcs ? Math.round(preTcs*(c.tcs_rate||1)/100) : 0);
+               })();
+          %>
+          <tr>
+            <td><a href="/quotations/<%= q.id %>" class="fw-semibold text-decoration-none"><%= q.quotation_number %></a></td>
+            <td><%= q.customer_name %></td>
+            <td class="text-muted small"><%= q.machine_name %></td>
+            <td class="fw-semibold">₹<%= formatINR(total) %></td>
+            <td><span class="badge <%= q.status==='sent'?'bg-primary':q.status==='accepted'?'bg-success':q.status==='rejected'?'bg-danger':'bg-secondary' %>"><%= q.status %></span></td>
+            <td class="text-muted small"><%= new Date(q.created_at).toLocaleDateString('en-IN') %></td>
+            <td>
+              <a href="/quotations/<%= q.id %>/pdf" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf"></i></a>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!recent.length) { %>
+          <tr><td colspan="7" class="text-center text-muted py-4">No quotations yet. <a href="/quotations/new">Create one.</a></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; background: #fff; }
+  .page { width: 190mm; }
+
+  /* ── Header ── */
+  .header { display: flex; justify-content: space-between; align-items: flex-start;
+            border-bottom: 2.5px solid #000; padding-bottom: 7px; margin-bottom: 7px; }
+  .company-name { font-size: 30px; font-weight: 900; color: #cc0000; letter-spacing: 1px; line-height: 1; }
+  .company-info  { font-size: 11px; line-height: 1.7; margin-top: 4px; }
+  .logo-area     { display: flex; align-items: flex-start; gap: 8px; }
+  .bull-logo-img { height: 58px; width: auto; object-fit: contain; }
+  .bull-logo-text{ font-size: 14px; font-weight: 900; color: #cc0000; border: 2.5px solid #cc0000;
+                   padding: 5px 10px; display: inline-block; letter-spacing: 2px; }
+  .bull-sub      { font-size: 8px; font-weight: bold; letter-spacing: 0.5px; text-align: center; margin-top: 2px; }
+
+  /* ── Customer block ── */
+  .customer-block { border: 1px solid #ccc; padding: 6px 10px; margin-bottom: 6px;
+                    font-size: 11px; line-height: 1.75; display: flex; justify-content: space-between; }
+  .customer-right { text-align: right; white-space: nowrap; font-size: 11px; }
+
+  .greeting { font-size: 11px; margin-bottom: 5px; }
+
+  /* ── Main table ── */
+  table.main { width: 100%; border-collapse: collapse; }
+  table.main th { border: 1px solid #000; padding: 5px 7px; background: #f0f0f0;
+                  font-weight: bold; font-size: 11.5px; }
+  table.main td { border: 1px solid #000; padding: 4px 7px; font-size: 11.5px; vertical-align: middle; }
+
+  .col-srno { width: 5%;  text-align: center; }
+  .col-desc { width: 56%; }
+  .col-rate { width: 10%; text-align: center; }
+  .col-price{ width: 29%; text-align: right; }
+
+  .spec-list      { margin-top: 3px; padding-left: 0; list-style: none; }
+  .spec-list li   { font-size: 10.5px; line-height: 1.55; }
+  .spec-list li::before { content: "- "; }
+
+  tr.row-bold  td { font-weight: bold; }
+  tr.row-total td { font-weight: bold; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+
+  /* ── Bank + QR ── */
+  .bank-block { display: flex; justify-content: space-between; align-items: flex-start;
+                margin-top: 9px; border-top: 1px solid #ccc; padding-top: 7px; }
+  .bank-table    { border-collapse: collapse; }
+  .bank-table td { padding: 2px 5px; font-size: 10.5px; }
+  .bank-table .lbl { font-weight: bold; }
+  .qr-img  { width: 72px; height: 72px; object-fit: contain; }
+  .qr-box  { width: 72px; height: 72px; border: 1px solid #aaa; display: flex; align-items: center;
+             justify-content: center; font-size: 9px; color: #888; text-align: center; }
+
+  .footer { margin-top: 9px; font-size: 11px; font-weight: bold;
+            border-top: 1px solid #ccc; padding-top: 6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="company-name"><%= settings.company_name %></div>
+      <div class="company-info">
+        GSTIN : <%= settings.company_gstin %><br>
+        Auth. Dealer - <%= settings.dealer_of %><br>
+        <%= settings.company_address %>
+      </div>
+    </div>
+    <div class="logo-area">
+      <% if (bullLogoB64) { %>
+        <img src="<%= bullLogoB64 %>" class="bull-logo-img" alt="Bull">
+      <% } else { %>
+        <div><div class="bull-logo-text">&#9679; BULL</div><div class="bull-sub">CONSTRUCTION EQUIPMENT</div></div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- CUSTOMER -->
+  <div class="customer-block">
+    <div>
+      <strong>To,</strong><br>
+      <strong>Name</strong> - <%= q.customer_name %><br>
+      <strong>Phone</strong> - <%= q.customer_phone || 'XXXXX-XXXXX' %><br>
+      <strong>Address</strong> - <%= [q.customer_address, q.customer_city, q.customer_state].filter(Boolean).join(', ') %><br>
+      <strong>GSTIN</strong> : <%= q.customer_gstin || '' %><br>
+      <strong>HP with</strong> - <%= q.hp_with || '—' %>
+    </div>
+    <div class="customer-right">
+      <strong>Date :</strong> <%= new Date(q.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase() %><br>
+      <strong>Quotation Number</strong> - <%= q.quotation_number %>
+    </div>
+  </div>
+
+  <!-- GREETING -->
+  <div class="greeting">
+    Dear Sir,<br>
+    Please find detailed quotation for <strong><%= q.machine_name %></strong>
+  </div>
+
+  <!-- MAIN TABLE -->
+  <table class="main">
+    <thead>
+      <tr>
+        <th class="col-srno">SrNo</th>
+        <th class="col-desc">Description</th>
+        <th class="col-rate">Rate</th>
+        <th class="col-price">Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Machine row -->
+      <tr>
+        <td class="col-srno">1</td>
+        <td class="col-desc">
+          <strong><%= q.machine_name %> - HSN <%= q.hsn_code %></strong>
+          <ul class="spec-list">
+            <% if(q.engine)       { %><li><%= q.engine %></li><% } %>
+            <% if(q.transmission) { %><li><%= q.transmission %></li><% } %>
+            <% if(q.rear_axle && q.rear_axle !== 'N/A') { %><li><%= q.rear_axle %></li><% } %>
+            <% if(q.pump)         { %><li><%= q.pump %></li><% } %>
+            <% if(q.front_tyre)   { %><li>Front Tyre - <%= q.front_tyre %></li><% } %>
+            <% if(q.rear_tyre)    { %><li>Rear Tyre - <%= q.rear_tyre %></li><% } %>
+            <% if(q.battery)      { %><li><%= q.battery %></li><% } %>
+            <% if(q.weight)       { %><li><%= q.weight %> - Weight</li><% } %>
+            <% if(q.bucket)       { %><li><%= q.bucket %></li><% } %>
+            <% if(q.warranty)     { %><li><%= q.warranty %></li><% } %>
+          </ul>
+        </td>
+        <td class="col-rate"></td>
+        <td class="col-price"><%= formatINR(q.basic_price) %></td>
+      </tr>
+
+      <!-- Pricing rows -->
+      <tr class="row-bold">
+        <td></td><td>Basic Price</td><td></td><td class="col-price"><%= formatINR(calc.basic) %></td>
+      </tr>
+      <tr>
+        <td></td><td>Transit Insurance</td><td></td><td class="col-price"><%= formatINR(calc.transitInsurance) %></td>
+      </tr>
+      <tr>
+        <td></td><td>Freight Extra as Actual</td><td></td><td class="col-price"></td>
+      </tr>
+
+      <% if(q.tax_mode === 'IGST') { %>
+      <tr>
+        <td></td>
+        <td>IGST @ <%= q.igst_rate %>%</td>
+        <td class="col-rate"><%= Number(q.igst_rate).toFixed(2) %>%</td>
+        <td class="col-price"><%= formatINR(calc.igst) %></td>
+      </tr>
+      <% } else { %>
+      <tr>
+        <td></td>
+        <td>CGST @ <%= q.cgst_rate %>%</td>
+        <td class="col-rate"><%= Number(q.cgst_rate).toFixed(2) %>%</td>
+        <td class="col-price"><%= formatINR(calc.cgst) %></td>
+      </tr>
+      <tr>
+        <td></td>
+        <td>SGST @ <%= q.sgst_rate %>%</td>
+        <td class="col-rate"><%= Number(q.sgst_rate).toFixed(2) %>%</td>
+        <td class="col-price"><%= formatINR(calc.sgst) %></td>
+      </tr>
+      <% } %>
+
+      <tr class="row-total">
+        <td></td><td>Total</td><td></td><td class="col-price"><%= formatINR(calc.preTcs) %></td>
+      </tr>
+
+      <% if(q.has_tcs) { %>
+      <tr>
+        <td></td>
+        <td>TCS Charge Extra @ <%= q.tcs_rate %>% Value of Invoice</td>
+        <td class="col-rate"><%= Number(q.tcs_rate).toFixed(2) %>%</td>
+        <td class="col-price"><%= formatINR(calc.tcs) %></td>
+      </tr>
+      <% } %>
+
+      <tr class="row-bold">
+        <td></td><td>Sub Total</td><td></td><td class="col-price"><%= formatINR(calc.total) %></td>
+      </tr>
+      <tr>
+        <td></td><td>Insurance including IMT-23</td><td></td><td class="col-price"><%= q.insurance %></td>
+      </tr>
+      <tr>
+        <td></td><td>TRC / RTO Charges</td><td></td><td class="col-price"><%= q.trc %></td>
+      </tr>
+
+      <!-- Amount in words -->
+      <tr>
+        <td colspan="3" style="font-size:11.5px"><strong>Amount : <%= calc.amountWords %>.</strong></td>
+        <td class="col-price" style="font-weight:bold; font-size:12px"><%= formatINR(calc.total) %></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- BANK + QR -->
+  <div class="bank-block">
+    <div>
+      <div style="font-weight:bold; font-size:11px; margin-bottom:4px">Our Bank Details</div>
+      <table class="bank-table">
+        <tr><td class="lbl">Beneficiary Name</td><td>: <%= settings.bank_beneficiary %></td></tr>
+        <tr><td class="lbl">Bank Account Number</td><td>: <%= settings.bank_account %></td></tr>
+        <tr><td class="lbl">Bank IFSC</td><td>: <%= settings.bank_ifsc %></td></tr>
+        <tr><td class="lbl">Branch</td><td>: <%= settings.bank_branch %></td></tr>
+      </table>
+    </div>
+    <div>
+      <% if (paymentQrB64) { %>
+        <img src="<%= paymentQrB64 %>" class="qr-img" alt="Payment QR">
+      <% } else { %>
+        <div class="qr-box">Scan to<br>Pay</div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    For Further Info - Please contact - <%= q.salesperson_name || settings.contact_name %> - <%= q.salesperson_phone || settings.contact_phone %>
+  </div>
+
+</div>
+</body>
+</html>

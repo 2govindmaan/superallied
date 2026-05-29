@@ -1,0 +1,142 @@
+/* Layout */
+body {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f6fa;
+}
+
+#sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: #1a1d2e;
+  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.brand-logo {
+  width: 40px;
+  height: 40px;
+  background: #cc0000;
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+#sidebar .nav-link {
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+#sidebar .nav-link:hover,
+#sidebar .nav-link.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.main-content {
+  margin-left: 240px;
+  flex: 1;
+  padding: 28px 32px;
+  min-height: 100vh;
+}
+
+/* Page header */
+.page-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+/* Stat cards */
+.stat-card .card-body {
+  padding: 20px 16px;
+}
+
+.stat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+
+/* Login page */
+.login-page {
+  background: linear-gradient(135deg, #1a1d2e 0%, #2d3250 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tables */
+.table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+/* Cards */
+.card {
+  border-radius: 12px;
+}
+
+.card-header {
+  border-radius: 12px 12px 0 0 !important;
+  font-size: 14px;
+  padding: 14px 18px;
+}
+
+/* Buttons */
+.btn-danger {
+  background-color: #cc0000;
+  border-color: #cc0000;
+}
+
+.btn-danger:hover {
+  background-color: #aa0000;
+  border-color: #aa0000;
+}
+
+/* Badges */
+.badge {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Font monospace for codes */
+.font-monospace {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #sidebar {
+    width: 200px;
+  }
+  .main-content {
+    margin-left: 200px;
+    padding: 16px;
+  }
+}

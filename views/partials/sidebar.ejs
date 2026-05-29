@@ -1,0 +1,53 @@
+<nav id="sidebar" class="d-flex flex-column p-3 text-white">
+  <a href="/" class="d-flex align-items-center mb-3 text-white text-decoration-none gap-2">
+    <div class="brand-logo flex-shrink-0">SA</div>
+    <div>
+      <div class="fw-bold lh-1">Super Allied</div>
+      <small class="text-white-50" style="font-size:10px">Bull CE Dealer</small>
+    </div>
+  </a>
+  <div class="text-center mb-3">
+    <img src="/bull-logo.jpg" alt="Bull" style="height:36px;opacity:0.9;border-radius:4px;" onerror="this.style.display='none'">
+  </div>
+  <hr class="border-secondary mt-0">
+  <ul class="nav flex-column mb-auto">
+    <li class="nav-item">
+      <a href="/" class="nav-link text-white <%= active==='dashboard'?'active':'' %>">
+        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/customers" class="nav-link text-white <%= active==='customers'?'active':'' %>">
+        <i class="bi bi-people me-2"></i>Customers
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/quotations" class="nav-link text-white <%= active==='quotations'?'active':'' %>">
+        <i class="bi bi-file-earmark-text me-2"></i>Quotations
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/machines" class="nav-link text-white <%= active==='machines'?'active':'' %>">
+        <i class="bi bi-gear me-2"></i>Machines
+      </a>
+    </li>
+    <li class="nav-item mt-3">
+      <a href="/calculator" class="nav-link text-white <%= active==='calculator'?'active':'' %>">
+        <i class="bi bi-calculator me-2"></i>Profit Calculator
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/settings" class="nav-link text-white <%= active==='settings'?'active':'' %>">
+        <i class="bi bi-sliders me-2"></i>Settings
+      </a>
+    </li>
+  </ul>
+  <hr class="border-secondary">
+  <div class="d-flex align-items-center">
+    <div class="flex-grow-1">
+      <small class="text-white-50">Logged in as</small><br>
+      <span class="fw-semibold"><%= user ? user.full_name || user.username : '' %></span>
+    </div>
+    <a href="/logout" class="btn btn-sm btn-outline-light"><i class="bi bi-box-arrow-right"></i></a>
+  </div>
+</nav>

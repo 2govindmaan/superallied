@@ -1,0 +1,379 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'quotations', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><%= quotation ? 'Edit Quotation '+quotation.quotation_number : 'New Quotation' %></h4>
+    <a href="/quotations" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+  <% if (flash.error) { %><div class="alert alert-danger"><%= flash.error %></div><% } %>
+
+  <form method="POST" action="<%= quotation ? '/quotations/'+quotation.id : '/quotations' %>" id="quoteForm">
+    <div class="row g-3">
+      <!-- Left Column -->
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Customer</div>
+          <div class="card-body">
+            <label class="form-label fw-semibold">Select Customer <span class="text-danger">*</span></label>
+            <select name="customer_id" id="customer_id" class="form-select" required>
+              <option value="">— Select Customer —</option>
+              <% customers.forEach(c => { %>
+              <option value="<%= c.id %>"
+                <%= (quotation?.customer_id==c.id || prefill==c.id) ? 'selected' : '' %>>
+                <%= c.name %> <% if(c.phone) { %>(<%=c.phone%>)<% } %>
+              </option>
+              <% }) %>
+            </select>
+            <div class="mt-2">
+              <small class="text-muted">Customer not in list? <a href="/customers/new" target="_blank">Add new customer</a></small>
+            </div>
+            <div class="mt-2">
+              <label class="form-label fw-semibold mb-1">HP With (Hire Purchase)</label>
+              <input type="text" name="hp_with" class="form-control" placeholder="e.g. HDFC Bank, SBI, —"
+                     value="<%= quotation?.hp_with || '' %>">
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Machine</div>
+          <div class="card-body">
+            <label class="form-label fw-semibold">Select Machine <span class="text-danger">*</span></label>
+            <select name="machine_id" id="machine_id" class="form-select" required onchange="loadMachine(this.value)">
+              <option value="">— Select Machine —</option>
+              <% const series = [...new Set(machines.map(m=>m.model_series))];
+                 series.forEach(s => { %>
+              <optgroup label="<%= s %>">
+                <% machines.filter(m=>m.model_series===s).forEach(m => { %>
+                <option value="<%= m.id %>" data-price="<%= m.basic_price %>"
+                  <%= quotation?.machine_id==m.id ? 'selected' : '' %>>
+                  <%= m.display_name %> — ₹<%= formatINR(m.basic_price) %>
+                </option>
+                <% }) %>
+              </optgroup>
+              <% }) %>
+            </select>
+            <div class="row mt-3 g-2">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Basic Price (₹) <span class="text-danger">*</span></label>
+                <input type="number" name="basic_price" id="basic_price" class="form-control"
+                       value="<%= quotation?.basic_price || '' %>" required oninput="calcTotals()">
+                <small class="text-muted">Auto-filled from catalog, override if needed</small>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Quantity</label>
+                <input type="number" name="quantity" id="quantity" class="form-control" min="1" value="<%= quotation?.quantity || 1 %>" oninput="calcTotals()">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Transit Ins. (₹)</label>
+                <input type="number" name="transit_insurance" id="transit_insurance" class="form-control" value="<%= quotation?.transit_insurance || 2000 %>" oninput="calcTotals()">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Tax & Charges</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Tax Mode</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="tax_mode" id="tm_cgst" value="CGST_SGST"
+                    <%= (!quotation || quotation.tax_mode==='CGST_SGST') ? 'checked' : '' %> onchange="switchTaxMode()">
+                  <label class="form-check-label" for="tm_cgst">CGST + SGST (Intra-state)</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="tax_mode" id="tm_igst" value="IGST"
+                    <%= quotation?.tax_mode==='IGST' ? 'checked' : '' %> onchange="switchTaxMode()">
+                  <label class="form-check-label" for="tm_igst">IGST (Inter-state)</label>
+                </div>
+              </div>
+            </div>
+            <div class="row g-2" id="cgstFields">
+              <div class="col-md-4">
+                <label class="form-label small">CGST %</label>
+                <input type="number" name="cgst_rate" id="cgst_rate" class="form-control form-control-sm"
+                       value="<%= quotation?.cgst_rate || 9 %>" step="0.01" oninput="calcTotals()">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">SGST %</label>
+                <input type="number" name="sgst_rate" id="sgst_rate" class="form-control form-control-sm"
+                       value="<%= quotation?.sgst_rate || 9 %>" step="0.01" oninput="calcTotals()">
+              </div>
+            </div>
+            <div class="row g-2 d-none" id="igstFields">
+              <div class="col-md-4">
+                <label class="form-label small">IGST %</label>
+                <input type="number" name="igst_rate" id="igst_rate" class="form-control form-control-sm"
+                       value="<%= quotation?.igst_rate || 18 %>" step="0.01" oninput="calcTotals()">
+              </div>
+            </div>
+            <div class="row g-2 mt-1">
+              <div class="col-auto d-flex align-items-center gap-2 mt-2">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" name="has_tcs" id="has_tcs"
+                    <%= (!quotation || quotation.has_tcs) ? 'checked' : '' %> onchange="calcTotals()">
+                  <label class="form-check-label" for="has_tcs">TCS</label>
+                </div>
+                <input type="number" name="tcs_rate" id="tcs_rate" class="form-control form-control-sm" style="width:80px"
+                       value="<%= quotation?.tcs_rate || 1 %>" step="0.01" oninput="calcTotals()">
+                <span class="text-muted small">%</span>
+              </div>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-md-6">
+                <label class="form-label small">Insurance (IMT-23)</label>
+                <input type="text" name="insurance" class="form-control form-control-sm"
+                       value="<%= quotation?.insurance || 'INCLUSIVE' %>">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small">TRC / RTO Charges</label>
+                <input type="text" name="trc" class="form-control form-control-sm"
+                       value="<%= quotation?.trc || 'INCLUSIVE' %>">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% if (quotation) { %>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body">
+            <label class="form-label fw-semibold">Status</label>
+            <select name="status" class="form-select form-select-sm" style="max-width:180px">
+              <option value="draft"    <%=quotation.status==='draft'?'selected':''%>>Draft</option>
+              <option value="sent"     <%=quotation.status==='sent'?'selected':''%>>Sent</option>
+              <option value="accepted" <%=quotation.status==='accepted'?'selected':''%>>Accepted</option>
+              <option value="rejected" <%=quotation.status==='rejected'?'selected':''%>>Rejected</option>
+            </select>
+          </div>
+        </div>
+        <% } %>
+
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Salesperson (shown in PDF footer)</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-7">
+                <label class="form-label small">Name</label>
+                <input type="text" name="salesperson_name" class="form-control"
+                       value="<%= quotation?.salesperson_name || defaultSalesperson %>"
+                       placeholder="Salesperson full name">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label small">Phone</label>
+                <input type="text" name="salesperson_phone" class="form-control"
+                       value="<%= quotation?.salesperson_phone || defaultSalespersonPhone %>"
+                       placeholder="Mobile number">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body">
+            <label class="form-label fw-semibold">Notes / Remarks</label>
+            <textarea name="notes" class="form-control" rows="2"><%= quotation?.notes || '' %></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Calc + Reverse Calc -->
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm sticky-top" style="top:20px">
+
+          <!-- Mode toggle -->
+          <div class="card-header bg-danger text-white p-0">
+            <div class="d-flex">
+              <button type="button" id="btn_forward" onclick="setMode('forward')"
+                class="btn flex-1 fw-semibold text-white border-0 rounded-0 rounded-top-start active-mode py-2">
+                &#8595; Forward Calc
+              </button>
+              <button type="button" id="btn_reverse" onclick="setMode('reverse')"
+                class="btn flex-1 fw-semibold text-white border-0 rounded-0 rounded-top-end py-2" style="opacity:.65">
+                &#8593; Reverse Calc
+              </button>
+            </div>
+          </div>
+
+          <!-- Reverse Calc input (hidden by default) -->
+          <div id="reverse_panel" class="d-none bg-warning-subtle border-bottom border-warning px-3 py-2">
+            <label class="form-label fw-bold small mb-1">Target Total / Selling Price ₹</label>
+            <input type="number" id="target_total" class="form-control fw-bold"
+                   placeholder="e.g. 3550000" oninput="reverseCalc()">
+            <div class="mt-2 d-flex align-items-center gap-2">
+              <small class="text-muted">→ Basic Price will be:</small>
+              <span id="r_basic_price" class="fw-bold text-success fs-6">—</span>
+            </div>
+            <button type="button" class="btn btn-warning btn-sm mt-2 w-100 fw-bold" onclick="applyReverse()">
+              Apply this Basic Price ↓
+            </button>
+          </div>
+
+          <!-- Live Calculation Table -->
+          <div class="card-body p-3">
+            <table class="table table-sm mb-0">
+              <tr><td class="text-muted">Basic Price</td><td class="text-end fw-semibold" id="c_basic">—</td></tr>
+              <tr><td class="text-muted">Transit Insurance</td><td class="text-end" id="c_ins">—</td></tr>
+              <tr class="table-light"><td class="fw-semibold">Taxable Base</td><td class="text-end fw-semibold" id="c_base">—</td></tr>
+              <tr id="row_cgst"><td class="text-muted" id="lbl_cgst">CGST @ 9%</td><td class="text-end" id="c_cgst">—</td></tr>
+              <tr id="row_sgst"><td class="text-muted" id="lbl_sgst">SGST @ 9%</td><td class="text-end" id="c_sgst">—</td></tr>
+              <tr id="row_igst" class="d-none"><td class="text-muted" id="lbl_igst">IGST @ 18%</td><td class="text-end" id="c_igst">—</td></tr>
+              <tr class="table-warning fw-bold"><td>Total (pre-TCS)</td><td class="text-end" id="c_pretcs">—</td></tr>
+              <tr id="row_tcs"><td class="text-muted" id="lbl_tcs">TCS @ 1%</td><td class="text-end" id="c_tcs">—</td></tr>
+              <tr class="table-danger fw-bold"><td>Grand Total</td><td class="text-end fs-6" id="c_total">—</td></tr>
+            </table>
+            <div class="mt-3 p-2 bg-light rounded">
+              <small class="text-muted">Amount in words:</small>
+              <div id="c_words" class="fst-italic small">—</div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button type="submit" class="btn btn-danger w-100 fw-bold">
+              <i class="bi bi-check-lg me-1"></i><%= quotation ? 'Update' : 'Create' %> Quotation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Number → Indian words
+const ONES=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const TENS=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+function two(n){return n<20?ONES[n]:TENS[Math.floor(n/10)]+(n%10?' '+ONES[n%10]:'')}
+function three(n){return n>=100?ONES[Math.floor(n/100)]+' Hundred'+(n%100?' '+two(n%100):''):two(n)}
+function n2w(n){
+  n=Math.round(n); if(!n) return 'Zero Rupees Only';
+  let w='',r=n;
+  const cr=Math.floor(r/10000000); if(cr){w+=three(cr)+' Crore '; r%=10000000;}
+  const lk=Math.floor(r/100000);   if(lk){w+=two(lk)+' Lakh '; r%=100000;}
+  const th=Math.floor(r/1000);     if(th){w+=two(th)+' Thousand '; r%=1000;}
+  const hu=Math.floor(r/100);      if(hu){w+=ONES[hu]+' Hundred '; r%=100;}
+  if(r) w+=two(r)+' ';
+  return w.trim()+' Rupees Only';
+}
+
+function inr(n){return '₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+function switchTaxMode(){
+  const igst = document.getElementById('tm_igst').checked;
+  document.getElementById('cgstFields').classList.toggle('d-none', igst);
+  document.getElementById('igstFields').classList.toggle('d-none', !igst);
+  document.getElementById('row_cgst').classList.toggle('d-none', igst);
+  document.getElementById('row_sgst').classList.toggle('d-none', igst);
+  document.getElementById('row_igst').classList.toggle('d-none', !igst);
+  calcTotals();
+}
+
+function calcTotals(){
+  const bp  = parseFloat(document.getElementById('basic_price').value)||0;
+  const qty = parseInt(document.getElementById('quantity').value)||1;
+  const ti  = parseFloat(document.getElementById('transit_insurance').value)||0;
+  const igst= document.getElementById('tm_igst').checked;
+  const cr  = parseFloat(document.getElementById('cgst_rate').value)||0;
+  const sr  = parseFloat(document.getElementById('sgst_rate').value)||0;
+  const ir  = parseFloat(document.getElementById('igst_rate').value)||0;
+  const hasTcs = document.getElementById('has_tcs').checked;
+  const tr  = parseFloat(document.getElementById('tcs_rate').value)||0;
+
+  const basic = bp * qty;
+  const ins   = ti * qty;
+  const base  = basic + ins;
+  let cgst=0, sgst=0, igstAmt=0;
+  if(igst){ igstAmt = base*ir/100; }
+  else     { cgst = base*cr/100; sgst = base*sr/100; }
+  const preTcs = base + cgst + sgst + igstAmt;
+  const tcs    = hasTcs ? Math.round(preTcs*tr/100) : 0;
+  const total  = preTcs + tcs;
+
+  document.getElementById('c_basic').textContent  = inr(basic);
+  document.getElementById('c_ins').textContent    = inr(ins);
+  document.getElementById('c_base').textContent   = inr(base);
+  document.getElementById('lbl_cgst').textContent = `CGST @ ${cr}%`;
+  document.getElementById('c_cgst').textContent   = inr(cgst);
+  document.getElementById('lbl_sgst').textContent = `SGST @ ${sr}%`;
+  document.getElementById('c_sgst').textContent   = inr(sgst);
+  document.getElementById('lbl_igst').textContent = `IGST @ ${ir}%`;
+  document.getElementById('c_igst').textContent   = inr(igstAmt);
+  document.getElementById('c_pretcs').textContent = inr(preTcs);
+  document.getElementById('lbl_tcs').textContent  = `TCS @ ${tr}%`;
+  document.getElementById('c_tcs').textContent    = inr(tcs);
+  document.getElementById('c_total').textContent  = inr(total);
+  document.getElementById('c_words').textContent  = n2w(total);
+  document.getElementById('row_tcs').classList.toggle('d-none', !hasTcs);
+}
+
+function loadMachine(id){
+  if(!id) return;
+  fetch('/api/machines/'+id)
+    .then(r=>r.json())
+    .then(m=>{
+      document.getElementById('basic_price').value = m.basic_price;
+      calcTotals();
+    });
+}
+
+function setMode(mode) {
+  const panel  = document.getElementById('reverse_panel');
+  const btnFwd = document.getElementById('btn_forward');
+  const btnRev = document.getElementById('btn_reverse');
+  if (mode === 'reverse') {
+    panel.classList.remove('d-none');
+    btnFwd.style.opacity = '0.65';
+    btnRev.style.opacity = '1';
+    document.getElementById('target_total').focus();
+    reverseCalc();
+  } else {
+    panel.classList.add('d-none');
+    btnFwd.style.opacity = '1';
+    btnRev.style.opacity = '0.65';
+  }
+}
+
+function _reverseBasic() {
+  const target   = parseFloat(document.getElementById('target_total').value) || 0;
+  const qty      = parseInt(document.getElementById('quantity').value) || 1;
+  const ti       = parseFloat(document.getElementById('transit_insurance').value) || 0;
+  const igstMode = document.getElementById('tm_igst').checked;
+  const cr       = parseFloat(document.getElementById('cgst_rate').value) || 0;
+  const sr       = parseFloat(document.getElementById('sgst_rate').value) || 0;
+  const ir       = parseFloat(document.getElementById('igst_rate').value) || 0;
+  const hasTcs   = document.getElementById('has_tcs').checked;
+  const tr       = parseFloat(document.getElementById('tcs_rate').value) || 0;
+  const gstRate  = igstMode ? ir : (cr + sr);
+  const preTcs   = hasTcs ? target / (1 + tr / 100) : target;
+  const base     = preTcs / (1 + gstRate / 100);
+  return base / qty - ti;  // basic price per unit
+}
+
+function reverseCalc() {
+  const target = parseFloat(document.getElementById('target_total').value) || 0;
+  if (!target) { document.getElementById('r_basic_price').textContent = '—'; return; }
+  const basicPerUnit = _reverseBasic();
+  document.getElementById('r_basic_price').textContent =
+    basicPerUnit > 0 ? inr(basicPerUnit) : '(invalid — check rates)';
+}
+
+function applyReverse() {
+  const target = parseFloat(document.getElementById('target_total').value) || 0;
+  if (!target) return;
+  const basicPerUnit = _reverseBasic();
+  if (basicPerUnit > 0) {
+    document.getElementById('basic_price').value = Math.round(basicPerUnit);
+    setMode('forward');
+    calcTotals();
+  }
+}
+
+// On page load — if a machine is already selected
+window.addEventListener('DOMContentLoaded', () => {
+  switchTaxMode();
+  calcTotals();
+  setMode('forward');
+});
+</script>
+</body></html>
