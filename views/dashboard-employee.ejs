@@ -1,0 +1,278 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'dashboard', user }) %>
+<div class="main-content emp-home">
+
+  <!-- Header -->
+  <div class="emp-greeting">
+    <div class="d-flex align-items-center gap-3">
+      <% if (emp.photo_path) { %>
+        <img src="<%= emp.photo_path %>" class="emp-avatar" alt="">
+      <% } else { %>
+        <div class="emp-avatar-fallback"><%= (emp.full_name||'U').charAt(0).toUpperCase() %></div>
+      <% } %>
+      <div>
+        <div class="emp-hello">Good <%= new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening' %> 👋</div>
+        <div class="emp-name"><%= emp.full_name || emp.username %></div>
+        <div class="emp-date"><%= new Date(today).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) %></div>
+      </div>
+    </div>
+
+    <!-- Today's attendance pill -->
+    <div class="mt-3">
+      <% if (todayAtt?.check_out_time) { %>
+        <span class="att-pill att-done"><i class="bi bi-check-circle-fill me-1"></i>Day Complete</span>
+      <% } else if (todayAtt?.check_in_time) { %>
+        <span class="att-pill att-in"><i class="bi bi-dot me-1" style="font-size:1.4rem;line-height:0"></i>Checked In at <%= new Date(todayAtt.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) %></span>
+      <% } else { %>
+        <span class="att-pill att-out"><i class="bi bi-exclamation-circle me-1"></i>Not Checked In</span>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Quick stat chips -->
+  <div class="d-flex flex-wrap gap-2 mb-4">
+    <div class="stat-chip"><i class="bi bi-file-earmark-text me-1"></i><strong><%= myQuotes %></strong> Quotations this month</div>
+    <div class="stat-chip"><i class="bi bi-geo-alt me-1"></i><strong><%= myVisits %></strong> Visits today</div>
+    <% if (pendingLeaves > 0) { %>
+    <div class="stat-chip stat-chip-warn"><i class="bi bi-clock me-1"></i><strong><%= pendingLeaves %></strong> Leave pending</div>
+    <% } %>
+  </div>
+
+  <!-- Main action tiles -->
+  <div class="tile-grid">
+
+    <!-- Attendance -->
+    <a href="/attendance" class="tile tile-attendance">
+      <div class="tile-icon"><i class="bi bi-calendar-check-fill"></i></div>
+      <div class="tile-label">Attendance</div>
+      <div class="tile-sub">
+        <% if (!todayAtt?.check_in_time) { %>Tap to Check In
+        <% } else if (!todayAtt?.check_out_time) { %>Checked In • Tap to Check Out
+        <% } else { %>Done for today<% } %>
+      </div>
+    </a>
+
+    <!-- Field Visit -->
+    <a href="#" class="tile tile-visit" onclick="openVisitModal(); return false">
+      <div class="tile-icon"><i class="bi bi-geo-alt-fill"></i></div>
+      <div class="tile-label">Field Visit</div>
+      <div class="tile-sub"><%= myVisits %> visit<%= myVisits===1?'':'s' %> today</div>
+    </a>
+
+    <!-- Quotations (if permitted) -->
+    <% if (hasPerm('quotations')) { %>
+    <a href="/quotations/new" class="tile tile-quote">
+      <div class="tile-icon"><i class="bi bi-file-earmark-plus-fill"></i></div>
+      <div class="tile-label">New Quotation</div>
+      <div class="tile-sub"><%= myQuotes %> this month</div>
+    </a>
+    <% } %>
+
+    <!-- Route Map -->
+    <a href="/my-route" class="tile tile-route">
+      <div class="tile-icon"><i class="bi bi-map-fill"></i></div>
+      <div class="tile-label">Route Map</div>
+      <div class="tile-sub">Today's route</div>
+    </a>
+
+    <!-- Expense Claim -->
+    <a href="#" class="tile tile-expense">
+      <div class="tile-icon"><i class="bi bi-receipt"></i></div>
+      <div class="tile-label">Expense Claim</div>
+      <div class="tile-sub">Coming soon</div>
+    </a>
+
+    <!-- My Leaves -->
+    <a href="/leaves" class="tile tile-leave">
+      <div class="tile-icon"><i class="bi bi-calendar-x-fill"></i></div>
+      <div class="tile-label">My Leaves</div>
+      <div class="tile-sub"><%= pendingLeaves > 0 ? pendingLeaves + ' pending' : 'Apply leave' %></div>
+    </a>
+
+    <!-- My Salary -->
+    <a href="/salary" class="tile tile-salary">
+      <div class="tile-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="tile-label">My Salary</div>
+      <div class="tile-sub">View slips</div>
+    </a>
+
+    <!-- ID Card -->
+    <a href="/id-card" class="tile tile-id">
+      <div class="tile-icon"><i class="bi bi-credit-card-2-front-fill"></i></div>
+      <div class="tile-label">ID Card</div>
+      <div class="tile-sub">View & Download</div>
+    </a>
+
+  </div>
+
+  <!-- Notifications shortcut -->
+  <% if (unreadCount > 0) { %>
+  <a href="/notifications" class="notif-bar">
+    <i class="bi bi-bell-fill me-2"></i>
+    You have <strong><%= unreadCount %></strong> unread notification<%= unreadCount===1?'':'s' %>
+    <i class="bi bi-chevron-right ms-auto"></i>
+  </a>
+  <% } %>
+</div>
+
+<!-- Field Visit Modal -->
+<div class="modal fade" id="visitModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title fw-bold"><i class="bi bi-geo-alt-fill text-danger me-2"></i>Log Field Visit</h5></div>
+      <div class="modal-body">
+        <div id="visitStep1">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Customer / Site Name <span class="text-danger">*</span></label>
+            <input type="text" id="v_customer" class="form-control form-control-lg" placeholder="Enter customer name…">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Remarks</label>
+            <textarea id="v_remarks" class="form-control" rows="2" placeholder="Purpose, outcome…"></textarea>
+          </div>
+          <div id="v_gps_status" class="small text-muted"><i class="bi bi-geo-alt me-1"></i>Getting location…</div>
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-danger flex-grow-1 fw-bold" onclick="submitVisit()" id="v_submit_btn" disabled>
+              <i class="bi bi-pin-map-fill me-1"></i>Submit Visit
+            </button>
+            <button class="btn btn-outline-secondary" onclick="closeVisitModal()">Cancel</button>
+          </div>
+        </div>
+        <div id="visitStep2" class="d-none text-center py-3">
+          <div class="spinner-border text-danger mb-3"></div><p>Saving visit…</p>
+        </div>
+        <div id="visitStep3" class="d-none text-center py-3">
+          <i class="bi bi-check-circle-fill text-success" style="font-size:3rem"></i>
+          <p class="fw-bold mt-2">Visit logged successfully!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.emp-home { padding-top: 20px; }
+.emp-greeting {
+  background: linear-gradient(135deg, #1a1d2e 0%, #2d3250 100%);
+  border-radius: 16px; padding: 20px; color: #fff; margin-bottom: 20px;
+}
+.emp-avatar { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.4); flex-shrink: 0; }
+.emp-avatar-fallback {
+  width: 60px; height: 60px; border-radius: 50%; background: #cc0000;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem; font-weight: 900; flex-shrink: 0;
+}
+.emp-hello { font-size: 13px; opacity: 0.7; }
+.emp-name  { font-size: 20px; font-weight: 800; line-height: 1.2; }
+.emp-date  { font-size: 12px; opacity: 0.65; margin-top: 2px; }
+
+.att-pill { display: inline-flex; align-items: center; border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: 600; }
+.att-done { background: rgba(40,167,69,0.2); color: #7dffa9; }
+.att-in   { background: rgba(255,193,7,0.2); color: #ffe066; }
+.att-out  { background: rgba(220,53,69,0.2); color: #ff8a94; }
+
+.stat-chip {
+  background: rgba(0,0,0,0.06); border-radius: 20px;
+  padding: 5px 14px; font-size: 12px; color: #444;
+}
+.stat-chip-warn { background: #fff3cd; color: #856404; }
+
+/* Tile Grid */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (min-width: 576px) { .tile-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 992px) { .tile-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.tile {
+  background: #fff; border-radius: 16px; padding: 20px 16px;
+  text-decoration: none; color: #1a1d2e;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  min-height: 110px; justify-content: center;
+  border: 2px solid transparent;
+}
+.tile:hover, .tile:active { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.14); color: #1a1d2e; }
+.tile-icon { font-size: 2rem; margin-bottom: 8px; }
+.tile-label { font-size: 14px; font-weight: 700; line-height: 1.2; }
+.tile-sub   { font-size: 11px; color: #888; margin-top: 3px; }
+
+.tile-attendance { border-color: #28a745; }
+.tile-attendance .tile-icon { color: #28a745; }
+.tile-visit      { border-color: #007bff; }
+.tile-visit      .tile-icon { color: #007bff; }
+.tile-quote      { border-color: #cc0000; }
+.tile-quote      .tile-icon { color: #cc0000; }
+.tile-route      { border-color: #6f42c1; }
+.tile-route      .tile-icon { color: #6f42c1; }
+.tile-expense    { border-color: #fd7e14; opacity: 0.65; }
+.tile-expense    .tile-icon { color: #fd7e14; }
+.tile-leave      { border-color: #e83e8c; }
+.tile-leave      .tile-icon { color: #e83e8c; }
+.tile-salary     { border-color: #20c997; }
+.tile-salary     .tile-icon { color: #20c997; }
+.tile-id         { border-color: #6c757d; }
+.tile-id         .tile-icon { color: #6c757d; }
+
+.notif-bar {
+  background: #fff3cd; border: 1px solid #ffc107; border-radius: 12px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 4px;
+  text-decoration: none; color: #856404; font-size: 14px; font-weight: 600;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let _visitLat = null, _visitLng = null;
+
+function openVisitModal() {
+  _visitLat = null; _visitLng = null;
+  document.getElementById('v_submit_btn').disabled = true;
+  document.getElementById('v_customer').value = '';
+  document.getElementById('v_remarks').value = '';
+  document.getElementById('v_gps_status').innerHTML = '<i class="bi bi-geo-alt me-1"></i>Getting location…';
+  ['visitStep2','visitStep3'].forEach(id => document.getElementById(id).classList.add('d-none'));
+  document.getElementById('visitStep1').classList.remove('d-none');
+  new bootstrap.Modal(document.getElementById('visitModal')).show();
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    _visitLat = pos.coords.latitude; _visitLng = pos.coords.longitude;
+    document.getElementById('v_gps_status').innerHTML =
+      '<i class="bi bi-geo-alt-fill text-success me-1"></i>Location: ' + _visitLat.toFixed(4) + ', ' + _visitLng.toFixed(4);
+    document.getElementById('v_submit_btn').disabled = false;
+  }, err => {
+    document.getElementById('v_gps_status').innerHTML = '<i class="bi bi-exclamation-triangle text-warning me-1"></i>Location unavailable — continuing without GPS.';
+    document.getElementById('v_submit_btn').disabled = false;
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+async function submitVisit() {
+  const customer = document.getElementById('v_customer').value.trim();
+  if (!customer) { document.getElementById('v_customer').focus(); return; }
+
+  document.getElementById('visitStep1').classList.add('d-none');
+  document.getElementById('visitStep2').classList.remove('d-none');
+
+  try {
+    const resp = await fetch('/visits', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_name: customer, remarks: document.getElementById('v_remarks').value, lat: _visitLat, lng: _visitLng })
+    }).then(r => r.json());
+
+    document.getElementById('visitStep2').classList.add('d-none');
+    document.getElementById('visitStep3').classList.remove('d-none');
+    setTimeout(() => { bootstrap.Modal.getInstance(document.getElementById('visitModal')).hide(); location.reload(); }, 1500);
+  } catch(e) {
+    alert('Error saving visit. Please try again.'); closeVisitModal();
+  }
+}
+
+function closeVisitModal() {
+  bootstrap.Modal.getInstance(document.getElementById('visitModal'))?.hide();
+}
+</script>
+</body></html>

@@ -1,0 +1,68 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'route', user }) %>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-map me-2 text-danger"></i>My Route — Today</h4>
+    <small class="text-muted"><%= today %></small>
+  </div>
+
+  <% const allPoints = []; %>
+  <% if (att?.check_in_lat) allPoints.push({ lat: att.check_in_lat, lng: att.check_in_lng, label: 'Check In', type: 'checkin', time: att.check_in_time }); %>
+  <% visits.forEach(v => { if(v.lat) allPoints.push({ lat: v.lat, lng: v.lng, label: v.customer_name, type: 'visit', time: v.visit_time }); }); %>
+  <% if (att?.check_out_lat) allPoints.push({ lat: att.check_out_lat, lng: att.check_out_lng, label: 'Check Out', type: 'checkout', time: att.check_out_time }); %>
+
+  <% if (allPoints.length === 0) { %>
+  <div class="card border-0 shadow-sm text-center py-5">
+    <i class="bi bi-map fs-1 text-muted d-block mb-2"></i>
+    <p class="text-muted">No location data for today yet.</p>
+    <p class="small text-muted">Check in and log field visits to see your route.</p>
+  </div>
+  <% } else { %>
+  <div id="routeMap" style="height: 420px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1)"></div>
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-header bg-white fw-semibold small">Location Timeline</div>
+    <div class="list-group list-group-flush">
+      <% allPoints.forEach((p, i) => { %>
+      <div class="list-group-item py-2">
+        <div class="d-flex gap-2 align-items-center">
+          <span class="badge <%= p.type==='checkin'?'bg-success':p.type==='checkout'?'bg-secondary':'bg-primary' %>">
+            <%= i+1 %>
+          </span>
+          <div>
+            <div class="fw-semibold small"><%= p.label %></div>
+            <small class="text-muted"><%= new Date(p.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) %></small>
+          </div>
+          <a href="https://maps.google.com/?q=<%= p.lat %>,<%= p.lng %>" target="_blank" class="ms-auto btn btn-sm btn-outline-secondary py-0">
+            <i class="bi bi-geo-alt"></i>
+          </a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<% if (allPoints.length > 0) { %>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const pts = <%- JSON.stringify(allPoints) %>;
+const map = L.map('routeMap');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 18
+}).addTo(map);
+
+const colors = { checkin:'green', visit:'blue', checkout:'gray' };
+const markers = pts.map((p, i) => {
+  const m = L.circleMarker([p.lat, p.lng], {
+    radius: 10, color: colors[p.type]||'blue', fillColor: colors[p.type]||'blue', fillOpacity: 0.8
+  }).addTo(map).bindPopup(`<b>${p.label}</b><br>${new Date(p.time).toLocaleTimeString()}`);
+  return [p.lat, p.lng];
+});
+if (markers.length > 1) L.polyline(markers, { color: '#cc0000', weight: 3, opacity: 0.7, dashArray: '6,4' }).addTo(map);
+map.fitBounds(markers, { padding: [30, 30] });
+</script>
+<% } %>
+</body></html>

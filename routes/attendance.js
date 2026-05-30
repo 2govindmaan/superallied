@@ -45,8 +45,8 @@ router.post('/api/checkin', (req, res) => {
   const todayR = today();
   const { lat, lng, photo } = req.body;
 
-  const UPLOADS_DIR = res.app.locals.UPLOADS_DIR;
-  const photoPath = savePhoto(photo, 'attendance', UPLOADS_DIR);
+  // photo is already uploaded via /api/upload — use path directly
+  const photoPath = (photo && photo.startsWith('/uploads/')) ? photo : savePhoto(photo, 'attendance', res.app.locals.UPLOADS_DIR);
 
   const existing = db.prepare('SELECT id, check_in_time FROM attendance WHERE user_id=? AND date=?').get(uid, todayR);
 
@@ -72,8 +72,7 @@ router.post('/api/checkout', (req, res) => {
   const todayR = today();
   const { lat, lng, photo } = req.body;
 
-  const UPLOADS_DIR = res.app.locals.UPLOADS_DIR;
-  const photoPath = savePhoto(photo, 'attendance', UPLOADS_DIR);
+  const photoPath = (photo && photo.startsWith('/uploads/')) ? photo : savePhoto(photo, 'attendance', res.app.locals.UPLOADS_DIR);
 
   const rec = db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(uid, todayR);
 

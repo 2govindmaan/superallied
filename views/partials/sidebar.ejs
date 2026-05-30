@@ -41,36 +41,41 @@
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
       </a>
     </li>
-    <li class="nav-item">
-      <a href="/customers" class="nav-link text-white <%= active==='customers'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-people me-2"></i>Customers
-      </a>
-    </li>
+
+    <!-- Sales / Quotations (permission-gated) -->
+    <% if (hasPerm('quotations')) { %>
     <li class="nav-item">
       <a href="/quotations" class="nav-link text-white <%= active==='quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-file-earmark-text me-2"></i>Quotations
       </a>
     </li>
+    <% } %>
+    <% if (hasPerm('customers')) { %>
+    <li class="nav-item">
+      <a href="/customers" class="nav-link text-white <%= active==='customers'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-people me-2"></i>Customers
+      </a>
+    </li>
+    <% } %>
+    <% if (user && user.role === 'admin') { %>
     <li class="nav-item">
       <a href="/machines" class="nav-link text-white <%= active==='machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-gear me-2"></i>Machines
       </a>
     </li>
-
-    <% if (user && user.role === 'admin') { %>
-    <li class="nav-item mt-3">
+    <li class="nav-item">
       <a href="/calculator" class="nav-link text-white <%= active==='calculator'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-calculator me-2"></i>Profit Calculator
       </a>
     </li>
     <% } %>
 
-    <li class="nav-item <%= user && user.role !== 'admin' ? 'mt-3' : '' %>">
+    <!-- Settings + Users -->
+    <li class="nav-item mt-1">
       <a href="/settings" class="nav-link text-white <%= active==='settings'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-sliders me-2"></i>Settings
       </a>
     </li>
-
     <% if (user && user.role === 'admin') { %>
     <li class="nav-item">
       <a href="/users" class="nav-link text-white <%= active==='users'?'active':'' %>" onclick="closeSidebarOnMobile()">
@@ -79,9 +84,9 @@
     </li>
     <% } %>
 
-    <!-- HR Section separator -->
+    <!-- HR & Personal separator -->
     <li class="nav-item mt-2">
-      <div class="text-white-50 px-2 py-1" style="font-size:10px;text-transform:uppercase;letter-spacing:1px">HR & Attendance</div>
+      <div class="text-white-50 px-2 py-1" style="font-size:10px;text-transform:uppercase;letter-spacing:1px">My HR</div>
     </li>
     <li class="nav-item">
       <a href="/notifications" class="nav-link text-white <%= active==='notifications'?'active':'' %>" onclick="closeSidebarOnMobile()">
@@ -89,11 +94,20 @@
         <% if (unreadCount > 0) { %><span class="badge bg-danger ms-1"><%= unreadCount %></span><% } %>
       </a>
     </li>
+    <% if (hasPerm('attendance')) { %>
     <li class="nav-item">
       <a href="/attendance" class="nav-link text-white <%= active==='attendance'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-calendar-check me-2"></i>My Attendance
+        <i class="bi bi-calendar-check me-2"></i>Attendance
       </a>
     </li>
+    <% } %>
+    <% if (hasPerm('field_visit')) { %>
+    <li class="nav-item">
+      <a href="/visits" class="nav-link text-white <%= active==='visits'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-geo-alt me-2"></i>Field Visits
+      </a>
+    </li>
+    <% } %>
     <li class="nav-item">
       <a href="/leaves" class="nav-link text-white <%= active==='leaves'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-calendar-x me-2"></i>My Leaves
@@ -106,12 +120,17 @@
     </li>
     <li class="nav-item">
       <a href="/id-card" class="nav-link text-white <%= active==='id-card'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-credit-card-2-front me-2"></i>My ID Card
+        <i class="bi bi-credit-card-2-front me-2"></i>ID Card
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/profile" class="nav-link text-white <%= active==='profile'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-person-circle me-2"></i>My Profile
       </a>
     </li>
 
-    <% if (user && ['admin','manager'].includes(user.role)) { %>
-    <!-- HR Admin section -->
+    <!-- HR Admin (manager / hr role / admin) -->
+    <% if (hasPerm('hr_admin') || user?.role === 'admin') { %>
     <li class="nav-item mt-2">
       <div class="text-white-50 px-2 py-1" style="font-size:10px;text-transform:uppercase;letter-spacing:1px">HR Admin</div>
     </li>
@@ -121,7 +140,7 @@
       </a>
     </li>
     <li class="nav-item">
-      <a href="/hr/employees" class="nav-link text-white <%= active==='hr-employees'?'active':'' %>" onclick="closeSidebarOnMobile()">
+      <a href="/hr/employees" class="nav-link text-white" onclick="closeSidebarOnMobile()">
         <i class="bi bi-person-lines-fill me-2"></i>Employees
       </a>
     </li>
@@ -130,16 +149,20 @@
         <i class="bi bi-calendar-week me-2"></i>Attendance Report
       </a>
     </li>
+    <% if (hasPerm('leave_approval') || user?.role === 'admin') { %>
     <li class="nav-item">
       <a href="/hr/leaves" class="nav-link text-white" onclick="closeSidebarOnMobile()">
         <i class="bi bi-check2-square me-2"></i>Leave Approvals
       </a>
     </li>
+    <% } %>
+    <% if (hasPerm('salary_admin') || user?.role === 'admin') { %>
     <li class="nav-item">
       <a href="/hr/salary" class="nav-link text-white" onclick="closeSidebarOnMobile()">
         <i class="bi bi-wallet2 me-2"></i>Salary Manager
       </a>
     </li>
+    <% } %>
     <% } %>
   </ul>
 

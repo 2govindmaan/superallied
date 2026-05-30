@@ -4,7 +4,7 @@ const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
 const path     = require('path');
 const fs       = require('fs');
-const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification } = require('./db');
+const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification, getUserPermissions } = require('./db');
 const { generatePDF } = require('./pdf');
 
 // ── File storage setup ────────────────────────────────────────────────────────
@@ -18,6 +18,7 @@ const leavesRoutes     = require('./routes/leaves');
 const salaryRoutes     = require('./routes/salary');
 const hrRoutes         = require('./routes/hr');
 const notifyRoutes     = require('./routes/notify');
+const visitsRoutes     = require('./routes/visits');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -71,15 +72,26 @@ function requireAdmin(req, res, next) {
   res.redirect('/');
 }
 
-// Inject current user + settings + notification count into all views
+// Inject user, settings, permissions, notification count into all views
 app.use((req, res, next) => {
-  res.locals.user = req.session.userId
+  const u = req.session.userId
     ? db.prepare('SELECT id, username, full_name, role FROM users WHERE id = ?').get(req.session.userId)
     : null;
+  res.locals.user     = u;
   res.locals.settings = getSettings();
-  res.locals.unreadCount = req.session.userId
-    ? (db.prepare('SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0').get(req.session.userId)?.c || 0)
+  res.locals.unreadCount = u
+    ? (db.prepare('SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0').get(u.id)?.c || 0)
     : 0;
+
+  // Permission helpers
+  if (u) {
+    const perms = getUserPermissions(u.role);
+    res.locals.hasPerm = (p) => perms.includes('*') || perms.includes(p);
+    res.locals._perms  = perms;
+  } else {
+    res.locals.hasPerm = () => false;
+    res.locals._perms  = [];
+  }
   next();
 });
 
@@ -104,34 +116,68 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
+// ── Permission middleware factory ─────────────────────────────────────────────
+function requirePerm(perm) {
+  return (req, res, next) => {
+    if (res.locals.hasPerm && res.locals.hasPerm(perm)) return next();
+    req.session.flash = { error: `You don't have permission to access this area.` };
+    res.redirect('/');
+  };
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 app.get('/', requireLogin, (req, res) => {
-  const isAdmin = res.locals.user?.role === 'admin';
-  const uid = req.session.userId;
+  const role    = res.locals.user?.role;
+  const isAdminLike = ['admin','manager','hr'].includes(role);
+  const uid     = req.session.userId;
+  const today   = new Date().toISOString().slice(0, 10);
 
+  if (!isAdminLike) {
+    // ── Employee tile dashboard ──
+    const todayAtt = db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(uid, today);
+    const myQuotes = db.prepare("SELECT COUNT(*) as c FROM quotations WHERE user_id=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").get(uid).c;
+    const myVisits = db.prepare("SELECT COUNT(*) as c FROM field_visits WHERE user_id=? AND date(visit_time)=?").get(uid, today).c;
+    const pendingLeaves = db.prepare("SELECT COUNT(*) as c FROM leaves WHERE user_id=? AND status='pending'").get(uid).c;
+    const emp = db.prepare('SELECT * FROM users WHERE id=?').get(uid);
+    return res.render('dashboard-employee', { title: 'Home', todayAtt, myQuotes, myVisits, pendingLeaves, emp, today });
+  }
+
+  // ── Admin / HR dashboard ──
+  const isAdmin = role === 'admin';
   const stats = {
     customers: db.prepare('SELECT COUNT(*) as c FROM customers').get().c,
     quotations: isAdmin
       ? db.prepare('SELECT COUNT(*) as c FROM quotations').get().c
-      : db.prepare('SELECT COUNT(*) as c FROM quotations WHERE user_id = ?').get(uid).c,
+      : db.prepare('SELECT COUNT(*) as c FROM quotations WHERE user_id=?').get(uid).c,
     thisMonth: isAdmin
-      ? db.prepare("SELECT COUNT(*) as c FROM quotations WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get().c
-      : db.prepare("SELECT COUNT(*) as c FROM quotations WHERE user_id = ? AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get(uid).c,
-    machines: db.prepare('SELECT COUNT(*) as c FROM machines WHERE active = 1').get().c,
+      ? db.prepare("SELECT COUNT(*) as c FROM quotations WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").get().c
+      : db.prepare("SELECT COUNT(*) as c FROM quotations WHERE user_id=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").get(uid).c,
+    machines: db.prepare('SELECT COUNT(*) as c FROM machines WHERE active=1').get().c,
   };
-
-  const recentSql = `
-    SELECT q.*, c.name as customer_name, m.display_name as machine_name
-    FROM quotations q
-    JOIN customers c ON c.id = q.customer_id
-    JOIN machines m  ON m.id = q.machine_id
-    ${isAdmin ? '' : 'WHERE q.user_id = ?'}
-    ORDER BY q.created_at DESC LIMIT 8`;
-  const recent = isAdmin
-    ? db.prepare(recentSql).all()
-    : db.prepare(recentSql).all(uid);
-
+  const recentSql = `SELECT q.*, c.name as customer_name, m.display_name as machine_name
+    FROM quotations q JOIN customers c ON c.id=q.customer_id JOIN machines m ON m.id=q.machine_id
+    ${isAdmin ? '' : 'WHERE q.user_id=?'} ORDER BY q.created_at DESC LIMIT 8`;
+  const recent = isAdmin ? db.prepare(recentSql).all() : db.prepare(recentSql).all(uid);
   res.render('dashboard', { title: 'Dashboard', stats, recent, formatINR });
+});
+
+// ── My Profile (self-service) ─────────────────────────────────────────────────
+app.get('/profile', requireLogin, (req, res) => {
+  const emp = db.prepare('SELECT * FROM users WHERE id=?').get(req.session.userId);
+  res.render('profile', { title: 'My Profile', emp });
+});
+
+app.post('/profile/photo', requireLogin, (req, res) => {
+  const { photo } = req.body;
+  if (!photo?.startsWith('data:image')) return res.json({ ok: false, error: 'Invalid image' });
+  const uid = req.session.userId;
+  const dir = path.join(UPLOADS_DIR, 'employees');
+  fs.mkdirSync(dir, { recursive: true });
+  const fname = `emp-${uid}-${Date.now()}.jpg`;
+  fs.writeFileSync(path.join(dir, fname), Buffer.from(photo.split(',')[1], 'base64'));
+  const photoPath = `/uploads/employees/${fname}`;
+  db.prepare('UPDATE users SET photo_path=? WHERE id=?').run(photoPath, uid);
+  res.json({ ok: true, path: photoPath });
 });
 
 // ── Customers ─────────────────────────────────────────────────────────────────
@@ -506,6 +552,20 @@ app.use('/leaves',        requireLogin, leavesRoutes);
 app.use('/salary',        requireLogin, salaryRoutes);
 app.use('/notifications', requireLogin, notifyRoutes);
 app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
+app.use('/visits',        requireLogin, visitsRoutes);
+
+// Route map placeholder
+app.get('/my-route', requireLogin, (req, res) => {
+  const today = new Date().toISOString().slice(0,10);
+  const { db: _db } = require('./db');
+  const points = _db.prepare(`
+    SELECT lat, lng, type, recorded_at FROM route_points
+    WHERE user_id=? AND date(recorded_at)=? ORDER BY recorded_at`).all(req.session.userId, today);
+  // Also include attendance + visits as route anchors
+  const att = _db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.session.userId, today);
+  const visits = _db.prepare("SELECT lat, lng, customer_name, visit_time FROM field_visits WHERE user_id=? AND date(visit_time)=?").all(req.session.userId, today);
+  res.render('my-route', { title: 'My Route Today', points, att, visits, today });
+});
 
 // ── HR redirect ────────────────────────────────────────────────────────────────
 app.get('/hr', requireLogin, (req, res) => {

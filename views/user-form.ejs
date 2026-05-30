@@ -25,12 +25,18 @@
                      placeholder="e.g. Rahul Sharma">
             </div>
             <div class="mb-3">
-              <label class="form-label fw-semibold">Role</label>
+              <label class="form-label fw-semibold">Role / Department</label>
               <select name="role" class="form-select">
-                <option value="staff" selected>Sales Staff</option>
-                <option value="admin">Admin</option>
+                <option value="sales" selected>Sales — Quotations, Customers, Visits</option>
+                <option value="service">Service — Field Visits, Expenses</option>
+                <option value="hr">HR — Employee Management, Leaves</option>
+                <option value="office">Office — Quotations, Admin Tasks</option>
+                <option value="employee">Employee — Attendance Only</option>
+                <option value="manager">Manager — Team Approvals + HR</option>
+                <option value="staff">Staff (Legacy) — Sales Access</option>
+                <option value="admin">Admin — Full Access</option>
               </select>
-              <small class="text-muted">Staff = limited access. Admin = full access including prices.</small>
+              <small class="text-muted">Determines which modules this user can access.</small>
             </div>
             <div class="mb-3">
               <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>

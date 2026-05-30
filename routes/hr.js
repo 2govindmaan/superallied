@@ -157,12 +157,23 @@ router.get('/employees/:id/id-card', async (req, res) => {
 router.get('/employees/:id/id-card/pdf', async (req, res) => {
   const emp      = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
   if (!emp) return res.status(404).send('Not found');
-  const settings = getSettings();
-  const qrData   = `EMP:${emp.employee_code || emp.id}|${emp.full_name}`;
+  const settings  = getSettings();
+  const UPLOADS_DIR = res.app.locals.UPLOADS_DIR;
+
+  const qrData    = `EMP:${emp.employee_code || emp.id}|${emp.full_name}`;
   const qrDataUrl = await QRCode.toDataURL(qrData, { width: 140, margin: 1 });
 
+  // Embed photo as base64 so Puppeteer can render it (no HTTP needed)
+  let photoB64 = '';
+  if (emp.photo_path && emp.photo_path.startsWith('/uploads/')) {
+    const filePath = path.join(UPLOADS_DIR, emp.photo_path.replace('/uploads/', ''));
+    if (fs.existsSync(filePath)) {
+      photoB64 = `data:image/jpeg;base64,${fs.readFileSync(filePath).toString('base64')}`;
+    }
+  }
+
   const html = await new Promise((resolve, reject) =>
-    res.app.render('id-card-pdf', { emp, settings, qrDataUrl },
+    res.app.render('id-card-pdf', { emp, settings, qrDataUrl, photoB64 },
       (err, h) => err ? reject(err) : resolve(h)));
 
   const pdfBuffer = await generatePDF(html);

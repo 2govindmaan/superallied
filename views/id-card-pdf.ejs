@@ -52,8 +52,8 @@
   </div>
   <div class="body">
     <div class="photo-col">
-      <% if (emp.photo_path) { %>
-        <img src="<%= emp.photo_path %>" class="photo" alt="">
+      <% if (photoB64) { %>
+        <img src="<%= photoB64 %>" class="photo" alt="">
       <% } else { %>
         <div class="no-photo"><%= (emp.full_name||'?').charAt(0).toUpperCase() %></div>
       <% } %>

@@ -221,10 +221,48 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_visits_user ON field_visits(user_id);
 `);
 
-// Seed leave types
-const insertLT = db.prepare('INSERT OR IGNORE INTO leave_types (code, name, days_per_year, carry_forward) VALUES (?,?,?,?)');
-[['CL','Casual Leave',12,0],['SL','Sick Leave',12,0],['EL','Earned Leave',15,1],['HD','Half Day',24,0]]
+// Add is_active column to leave_types if missing
+try { db.exec("ALTER TABLE leave_types ADD COLUMN is_active INTEGER DEFAULT 1"); } catch(e) {}
+
+// Role-based permissions table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS role_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    UNIQUE(role, permission)
+  );
+`);
+
+// Seed leave types (only CL and SL active by default)
+const insertLT = db.prepare('INSERT OR IGNORE INTO leave_types (code, name, days_per_year, carry_forward, is_active) VALUES (?,?,?,?,?)');
+[['CL','Casual Leave',12,0,1],['SL','Sick Leave',12,0,1],['EL','Earned Leave',15,1,0],['HD','Half Day',24,0,0]]
   .forEach(r => insertLT.run(...r));
+// Ensure EL and HD stay inactive even on existing DBs
+db.prepare("UPDATE leave_types SET is_active=0 WHERE code IN ('EL','HD')").run();
+
+// Seed default role permissions
+const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?,?)');
+const defaultPerms = [
+  // manager
+  ['manager','attendance'],['manager','hr_admin'],['manager','leave_approval'],
+  ['manager','attendance_admin'],['manager','quotations'],['manager','customers'],
+  ['manager','salary_admin'],['manager','reports'],
+  // sales
+  ['sales','attendance'],['sales','field_visit'],['sales','route_map'],
+  ['sales','expense_claim'],['sales','quotations'],['sales','customers'],
+  // service
+  ['service','attendance'],['service','field_visit'],['service','route_map'],['service','expense_claim'],
+  // hr
+  ['hr','attendance'],['hr','hr_admin'],['hr','leave_approval'],['hr','attendance_admin'],['hr','reports'],
+  // office
+  ['office','attendance'],['office','quotations'],['office','customers'],
+  // staff (backward compat = sales)
+  ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],
+  // employee (basic)
+  ['employee','attendance'],
+];
+defaultPerms.forEach(([r,p]) => insertPerm.run(r,p));
 
 // Seed admin user
 const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
@@ -501,6 +539,11 @@ function formatINR(n) {
   return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function getUserPermissions(role) {
+  if (role === 'admin') return ['*'];
+  return db.prepare('SELECT permission FROM role_permissions WHERE role=?').all(role).map(r => r.permission);
+}
+
 function createNotification(userId, title, body = '', type = 'info', link = '') {
   try {
     db.prepare('INSERT INTO notifications (user_id,title,body,type,link) VALUES (?,?,?,?,?)')
@@ -508,4 +551,4 @@ function createNotification(userId, title, body = '', type = 'info', link = '') 
   } catch(e) { /* non-critical */ }
 }
 
-module.exports = { db, getSettings, getFY, nextQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification };
+module.exports = { db, getSettings, getFY, nextQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions };

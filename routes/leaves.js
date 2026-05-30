@@ -22,7 +22,7 @@ router.get('/', (req, res) => {
   const uid  = req.session.userId;
   const year = new Date().getFullYear();
 
-  const leaveTypes = db.prepare('SELECT * FROM leave_types ORDER BY id').all();
+  const leaveTypes = db.prepare('SELECT * FROM leave_types WHERE is_active=1 ORDER BY id').all();
 
   // Ensure balance rows exist
   leaveTypes.forEach(lt => ensureBalance(uid, lt.id, year));
@@ -30,7 +30,7 @@ router.get('/', (req, res) => {
   const balances = db.prepare(`
     SELECT lb.*, lt.code, lt.name, lt.days_per_year
     FROM leave_balances lb JOIN leave_types lt ON lt.id=lb.leave_type_id
-    WHERE lb.user_id=? AND lb.year=?`).all(uid, year);
+    WHERE lb.user_id=? AND lb.year=? AND lt.is_active=1`).all(uid, year);
 
   const history = db.prepare(`
     SELECT l.*, lt.code, lt.name
