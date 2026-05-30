@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; background: #fff; }
+  .card {
+    width: 85.6mm; height: 54mm;
+    border-radius: 6px; overflow: hidden;
+    border: 1px solid #ddd;
+    display: flex; flex-direction: column;
+  }
+  .header {
+    background: linear-gradient(135deg, #cc0000 0%, #8b0000 100%);
+    padding: 6px 8px;
+    color: #fff; text-align: center;
+  }
+  .company-name { font-size: 11px; font-weight: 900; letter-spacing: 0.5px; }
+  .sub { font-size: 7px; opacity: 0.85; }
+  .body { display: flex; flex: 1; padding: 6px; gap: 8px; }
+  .photo-col { flex-shrink: 0; }
+  .photo {
+    width: 48px; height: 48px; border-radius: 50%;
+    object-fit: cover; border: 2px solid #cc0000;
+  }
+  .no-photo {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: #cc0000; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 900;
+  }
+  .qr { width: 44px; height: 44px; margin-top: 4px; }
+  .info-col { flex: 1; }
+  .name { font-size: 10px; font-weight: 800; }
+  .desig { font-size: 8px; color: #cc0000; font-weight: 600; }
+  .dept  { font-size: 7.5px; color: #555; }
+  .row { display: flex; justify-content: space-between; font-size: 7.5px; color: #333; margin-top: 2px; }
+  .row .lbl { color: #888; }
+  .footer {
+    background: #f8f8f8; padding: 3px 8px;
+    text-align: center; font-size: 7px; color: #666;
+    border-top: 1px solid #eee;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="company-name"><%= settings.company_name %></div>
+    <div class="sub"><%= settings.dealer_of %></div>
+  </div>
+  <div class="body">
+    <div class="photo-col">
+      <% if (emp.photo_path) { %>
+        <img src="<%= emp.photo_path %>" class="photo" alt="">
+      <% } else { %>
+        <div class="no-photo"><%= (emp.full_name||'?').charAt(0).toUpperCase() %></div>
+      <% } %>
+      <img src="<%= qrDataUrl %>" class="qr" alt="QR">
+    </div>
+    <div class="info-col">
+      <div class="name"><%= emp.full_name %></div>
+      <div class="desig"><%= emp.designation || 'Employee' %></div>
+      <div class="dept"><%= emp.department || '' %></div>
+      <div style="border-top:1px solid #eee;margin:3px 0"></div>
+      <div class="row"><span class="lbl">Code</span><span><%= emp.employee_code || '—' %></span></div>
+      <div class="row"><span class="lbl">Mobile</span><span><%= emp.mobile || '—' %></span></div>
+      <div class="row"><span class="lbl">DOJ</span><span><%= emp.date_of_joining || '—' %></span></div>
+      <div class="row"><span class="lbl">Emergency</span><span style="font-size:7px"><%= (emp.emergency_contact||'—').slice(0,20) %></span></div>
+    </div>
+  </div>
+  <div class="footer"><%= settings.company_address %></div>
+</div>
+</body>
+</html>

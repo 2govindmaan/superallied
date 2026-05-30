@@ -1,0 +1,83 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'hr', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-calendar-check me-2 text-danger"></i>Attendance Report</h4>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="GET" class="d-flex flex-wrap gap-2 align-items-end">
+        <div>
+          <label class="form-label small mb-1">Date</label>
+          <input type="date" name="date" value="<%= dateFilter %>" class="form-control" style="max-width:160px">
+        </div>
+        <div>
+          <label class="form-label small mb-1">Employee</label>
+          <select name="emp" class="form-select" style="max-width:200px">
+            <option value="">All Employees</option>
+            <% employees.forEach(e => { %><option value="<%= e.id %>" <%=empFilter==e.id?'selected':''%>><%= e.full_name %></option><% }) %>
+          </select>
+        </div>
+        <button class="btn btn-outline-secondary"><i class="bi bi-filter me-1"></i>Filter</button>
+        <a href="/hr/attendance" class="btn btn-outline-danger">Today</a>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-2 mb-3">
+    <div class="col-4"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4"><%= total %></div><div class="small text-muted">Total</div></div></div>
+    <div class="col-4"><div class="card border-0 bg-success bg-opacity-10 text-center py-2"><div class="fw-bold fs-4 text-success"><%= present %></div><div class="small text-muted">Checked In</div></div></div>
+    <div class="col-4"><div class="card border-0 bg-danger bg-opacity-10 text-center py-2"><div class="fw-bold fs-4 text-danger"><%= total - present %></div><div class="small text-muted">Absent</div></div></div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light"><tr><th>Employee</th><th>Dept</th><th>Check In</th><th>Location In</th><th>Check Out</th><th>Duration</th><th>Photos</th></tr></thead>
+        <tbody>
+          <% records.forEach(r => {
+            const ci = r.check_in_time  ? new Date(r.check_in_time)  : null;
+            const co = r.check_out_time ? new Date(r.check_out_time) : null;
+            const hrs = (ci && co) ? ((co - ci) / 3600000).toFixed(1) + 'h' : '—';
+          %>
+          <tr>
+            <td>
+              <div class="fw-semibold small"><%= r.full_name %></div>
+              <small class="font-monospace text-muted"><%= r.employee_code %></small>
+            </td>
+            <td class="small"><%= r.department || '—' %></td>
+            <td>
+              <% if (ci) { %>
+                <span class="badge bg-success"><%= ci.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) %></span>
+              <% } else { %>
+                <span class="badge bg-secondary">Absent</span>
+              <% } %>
+            </td>
+            <td class="small text-muted">
+              <% if (r.check_in_lat) { %><a href="https://maps.google.com/?q=<%= r.check_in_lat %>,<%= r.check_in_lng %>" target="_blank" class="text-decoration-none"><i class="bi bi-geo-alt-fill text-danger"></i> Map</a><% } else { %>—<% } %>
+            </td>
+            <td>
+              <% if (co) { %>
+                <span class="badge bg-secondary"><%= co.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) %></span>
+              <% } else if (ci) { %>
+                <span class="badge bg-warning text-dark">Still In</span>
+              <% } else { %>—<% } %>
+            </td>
+            <td class="fw-semibold small"><%= hrs %></td>
+            <td>
+              <% if (r.check_in_photo) { %><a href="<%= r.check_in_photo %>" target="_blank"><img src="<%= r.check_in_photo %>" style="height:32px;border-radius:4px" title="Check In Photo"></a><% } %>
+              <% if (r.check_out_photo) { %><a href="<%= r.check_out_photo %>" target="_blank"><img src="<%= r.check_out_photo %>" style="height:32px;border-radius:4px;margin-left:2px" title="Check Out Photo"></a><% } %>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!records.length) { %><tr><td colspan="7" class="text-center text-muted py-4">No attendance records for this date.</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

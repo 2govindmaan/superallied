@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size:12px; color:#000; background:#fff; }
+  .page { width: 190mm; padding: 0; }
+
+  .header { background: #cc0000; color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; }
+  .company-name { font-size:20px; font-weight:900; letter-spacing:0.5px; }
+  .header-right { text-align:right; font-size:10px; opacity:0.9; }
+
+  .slip-title { background:#f8f8f8; border-bottom:2px solid #cc0000; padding:8px 16px;
+                font-size:14px; font-weight:700; letter-spacing:1px; text-align:center; }
+
+  .emp-block { display:flex; justify-content:space-between; padding:10px 16px; border-bottom:1px solid #eee; }
+  .emp-col { }
+  .emp-col .lbl { font-size:10px; color:#888; }
+  .emp-col .val { font-size:12px; font-weight:600; }
+
+  table.salary { width:100%; border-collapse:collapse; margin:0 16px; width:calc(100% - 32px); }
+  table.salary th { background:#f0f0f0; font-size:11px; font-weight:700; padding:6px 10px;
+                    border:1px solid #ddd; text-align:left; }
+  table.salary td { padding:5px 10px; border:1px solid #eee; font-size:11.5px; }
+  table.salary .earnings { color:#1a7000; }
+  table.salary .deductions { color:#cc0000; }
+  table.salary .total-row td { font-weight:700; background:#f8f8f8; border-top:2px solid #ccc; }
+
+  .net-box { margin:10px 16px; background:#cc0000; color:#fff; padding:10px 16px;
+             display:flex; justify-content:space-between; align-items:center; border-radius:6px; }
+  .net-label { font-size:13px; font-weight:700; }
+  .net-amount { font-size:20px; font-weight:900; }
+
+  .words-box { margin:6px 16px; padding:6px 10px; background:#f8f8f8; border-radius:4px;
+               font-size:11px; font-style:italic; color:#444; }
+
+  .footer-note { margin:10px 16px; font-size:9px; color:#888; border-top:1px solid #eee; padding-top:6px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="company-name"><%= settings.company_name %></div>
+      <div style="font-size:10px;opacity:0.9"><%= settings.company_address %></div>
+    </div>
+    <div class="header-right">
+      <div style="font-size:14px;font-weight:700">SALARY SLIP</div>
+      <div>Month: <%= record.month %></div>
+      <% if (record.paid_on) { %><div>Paid On: <%= record.paid_on %></div><% } %>
+    </div>
+  </div>
+
+  <div class="emp-block">
+    <div>
+      <div class="lbl">Employee Name</div>
+      <div class="val"><%= employee.full_name %></div>
+      <div class="lbl mt-2">Designation</div>
+      <div class="val"><%= employee.designation || '—' %></div>
+    </div>
+    <div>
+      <div class="lbl">Employee Code</div>
+      <div class="val"><%= employee.employee_code || '—' %></div>
+      <div class="lbl mt-2">Department</div>
+      <div class="val"><%= employee.department || '—' %></div>
+    </div>
+    <div>
+      <div class="lbl">Date of Joining</div>
+      <div class="val"><%= employee.date_of_joining || '—' %></div>
+    </div>
+  </div>
+
+  <table class="salary" style="margin-top:8px">
+    <tr>
+      <th style="width:50%">Earnings</th>
+      <th style="width:20%">Amount</th>
+      <th style="width:50%">Deductions</th>
+      <th style="width:20%">Amount</th>
+    </tr>
+    <tr>
+      <td class="earnings">Basic Salary</td>
+      <td>₹<%= formatINR(record.basic) %></td>
+      <td class="deductions">Provident Fund (PF)</td>
+      <td>₹<%= formatINR(record.pf) %></td>
+    </tr>
+    <tr>
+      <td class="earnings">HRA</td>
+      <td>₹<%= formatINR(record.hra) %></td>
+      <td class="deductions">ESIC</td>
+      <td>₹<%= formatINR(record.esic) %></td>
+    </tr>
+    <tr>
+      <td class="earnings">Other Allowances</td>
+      <td>₹<%= formatINR(record.allowances) %></td>
+      <td class="deductions">TDS</td>
+      <td>₹<%= formatINR(record.tds) %></td>
+    </tr>
+    <% if (incentive?.amount > 0) { %>
+    <tr>
+      <td class="earnings">Incentive / Bonus</td>
+      <td>₹<%= formatINR(incentive.amount) %></td>
+      <td class="deductions">Other Deductions</td>
+      <td>₹<%= formatINR(record.other_ded) %></td>
+    </tr>
+    <% } else { %>
+    <tr>
+      <td></td><td></td>
+      <td class="deductions">Other Deductions</td>
+      <td>₹<%= formatINR(record.other_ded) %></td>
+    </tr>
+    <% } %>
+    <tr class="total-row">
+      <td>Gross Salary</td>
+      <td>₹<%= formatINR(record.gross + (incentive?.amount||0)) %></td>
+      <td>Total Deductions</td>
+      <td>₹<%= formatINR(record.pf + record.esic + record.tds + record.other_ded) %></td>
+    </tr>
+  </table>
+
+  <div class="net-box">
+    <div class="net-label">Net Salary (Take Home)</div>
+    <div class="net-amount">₹<%= formatINR(record.net_salary + (incentive?.amount||0)) %></div>
+  </div>
+
+  <div class="words-box">
+    Amount in words: <strong><%= numberToWords(Math.round(record.net_salary + (incentive?.amount||0))) %></strong>
+  </div>
+
+  <% if (record.remarks) { %>
+  <div class="words-box">Remarks: <%= record.remarks %></div>
+  <% } %>
+
+  <div class="footer-note">
+    This is a computer-generated salary slip and does not require a signature.
+    For queries, contact <%= settings.contact_name %> at <%= settings.contact_phone %>.
+  </div>
+</div>
+</body>
+</html>

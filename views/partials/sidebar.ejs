@@ -78,6 +78,69 @@
       </a>
     </li>
     <% } %>
+
+    <!-- HR Section separator -->
+    <li class="nav-item mt-2">
+      <div class="text-white-50 px-2 py-1" style="font-size:10px;text-transform:uppercase;letter-spacing:1px">HR & Attendance</div>
+    </li>
+    <li class="nav-item">
+      <a href="/notifications" class="nav-link text-white <%= active==='notifications'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-bell me-2"></i>Notifications
+        <% if (unreadCount > 0) { %><span class="badge bg-danger ms-1"><%= unreadCount %></span><% } %>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/attendance" class="nav-link text-white <%= active==='attendance'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-calendar-check me-2"></i>My Attendance
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/leaves" class="nav-link text-white <%= active==='leaves'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-calendar-x me-2"></i>My Leaves
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/salary" class="nav-link text-white <%= active==='salary'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-cash-coin me-2"></i>My Salary
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/id-card" class="nav-link text-white <%= active==='id-card'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-credit-card-2-front me-2"></i>My ID Card
+      </a>
+    </li>
+
+    <% if (user && ['admin','manager'].includes(user.role)) { %>
+    <!-- HR Admin section -->
+    <li class="nav-item mt-2">
+      <div class="text-white-50 px-2 py-1" style="font-size:10px;text-transform:uppercase;letter-spacing:1px">HR Admin</div>
+    </li>
+    <li class="nav-item">
+      <a href="/hr/dashboard" class="nav-link text-white <%= active==='hr'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-people me-2"></i>HR Dashboard
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/hr/employees" class="nav-link text-white <%= active==='hr-employees'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-person-lines-fill me-2"></i>Employees
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/hr/attendance" class="nav-link text-white" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-calendar-week me-2"></i>Attendance Report
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/hr/leaves" class="nav-link text-white" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-check2-square me-2"></i>Leave Approvals
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/hr/salary" class="nav-link text-white" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-wallet2 me-2"></i>Salary Manager
+      </a>
+    </li>
+    <% } %>
   </ul>
 
   <hr class="border-secondary">
@@ -87,11 +150,8 @@
       <span class="fw-semibold text-truncate d-block" style="max-width:150px">
         <%= user ? user.full_name || user.username : '' %>
       </span>
-      <% if (user && user.role === 'admin') { %>
-        <span class="badge bg-danger" style="font-size:9px">ADMIN</span>
-      <% } else { %>
-        <span class="badge bg-primary" style="font-size:9px">SALES STAFF</span>
-      <% } %>
+      <% const roleBadge = {admin:'bg-danger',manager:'bg-warning text-dark',staff:'bg-primary',employee:'bg-success'}; %>
+      <span class="badge <%= roleBadge[user?.role] || 'bg-secondary' %>" style="font-size:9px"><%= (user?.role||'').toUpperCase() %></span>
     </div>
     <a href="/logout" class="btn btn-sm btn-outline-light flex-shrink-0 d-none d-lg-inline-flex">
       <i class="bi bi-box-arrow-right"></i>

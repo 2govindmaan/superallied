@@ -1,0 +1,65 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'hr', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-people me-2 text-danger"></i>Employees</h4>
+    <a href="/hr/employees/new" class="btn btn-danger"><i class="bi bi-person-plus me-1"></i>Add Employee</a>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="GET" class="d-flex flex-wrap gap-2">
+        <input type="text" name="q" value="<%= q %>" class="form-control" style="max-width:220px" placeholder="Search name / code / phone…">
+        <select name="dept" class="form-select" style="max-width:160px">
+          <option value="">All Departments</option>
+          <% departments.forEach(d => { %><option value="<%= d %>" <%=dept===d?'selected':''%>><%= d %></option><% }) %>
+        </select>
+        <button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button>
+        <% if (q || dept) { %><a href="/hr/employees" class="btn btn-outline-danger">Clear</a><% } %>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr><th>Employee</th><th>Code</th><th>Department</th><th>Role</th><th>Mobile</th><th>Joined</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% employees.forEach(e => { %>
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <% if (e.photo_path) { %>
+                  <img src="<%= e.photo_path %>" style="width:36px;height:36px;border-radius:50%;object-fit:cover">
+                <% } else { %>
+                  <div style="width:36px;height:36px;border-radius:50%;background:#cc0000;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">
+                    <%= (e.full_name || 'U').charAt(0).toUpperCase() %>
+                  </div>
+                <% } %>
+                <div>
+                  <div class="fw-semibold"><%= e.full_name || e.username %></div>
+                  <small class="text-muted"><%= e.designation || '' %></small>
+                </div>
+              </div>
+            </td>
+            <td class="font-monospace small"><%= e.employee_code || '—' %></td>
+            <td class="small"><%= e.department || '—' %></td>
+            <td><span class="badge <%= e.role==='admin'?'bg-danger':e.role==='manager'?'bg-warning text-dark':'bg-primary' %>"><%= e.role %></span></td>
+            <td class="small"><%= e.mobile || '—' %></td>
+            <td class="small text-muted"><%= e.date_of_joining || '—' %></td>
+            <td class="text-end">
+              <a href="/hr/employees/<%= e.id %>" class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></a>
+              <a href="/hr/employees/<%= e.id %>/id-card" class="btn btn-sm btn-outline-danger"><i class="bi bi-credit-card-2-front"></i></a>
+            </td>
+          </tr>
+          <% }) %>
+          <% if (!employees.length) { %><tr><td colspan="7" class="text-center text-muted py-4">No employees found.</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

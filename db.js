@@ -92,9 +92,139 @@ db.exec(`
   );
 `);
 
-// Safe migrations for existing databases
+// ── Safe migrations ───────────────────────────────────────────────────────────
+
+// Quotation columns
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_name TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_phone TEXT DEFAULT ''"); } catch(e) {}
+
+// Employee profile columns on users
+const userCols = [
+  "ALTER TABLE users ADD COLUMN employee_code TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN designation TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN department TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN mobile TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN emergency_contact TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN date_of_joining DATE",
+  "ALTER TABLE users ADD COLUMN photo_path TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN manager_id INTEGER",
+  "ALTER TABLE users ADD COLUMN is_hr_active INTEGER DEFAULT 1",
+];
+userCols.forEach(sql => { try { db.exec(sql); } catch(e) {} });
+
+// ── HR Tables ─────────────────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    date DATE NOT NULL,
+    check_in_time  DATETIME,
+    check_in_lat   REAL,
+    check_in_lng   REAL,
+    check_in_photo TEXT,
+    check_out_time DATETIME,
+    check_out_lat  REAL,
+    check_out_lng  REAL,
+    check_out_photo TEXT,
+    status TEXT DEFAULT 'present',
+    notes TEXT DEFAULT '',
+    UNIQUE(user_id, date)
+  );
+  CREATE INDEX IF NOT EXISTS idx_att_date ON attendance(date);
+  CREATE INDEX IF NOT EXISTS idx_att_user ON attendance(user_id);
+
+  CREATE TABLE IF NOT EXISTS leave_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    days_per_year INTEGER DEFAULT 12,
+    carry_forward INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS leave_balances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    leave_type_id INTEGER NOT NULL REFERENCES leave_types(id),
+    year INTEGER NOT NULL,
+    allocated REAL DEFAULT 0,
+    used      REAL DEFAULT 0,
+    UNIQUE(user_id, leave_type_id, year)
+  );
+
+  CREATE TABLE IF NOT EXISTS leaves (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id),
+    leave_type_id INTEGER NOT NULL REFERENCES leave_types(id),
+    start_date DATE NOT NULL,
+    end_date   DATE NOT NULL,
+    days       REAL NOT NULL,
+    reason     TEXT DEFAULT '',
+    status     TEXT DEFAULT 'pending',
+    reviewed_by      INTEGER REFERENCES users(id),
+    reviewer_comment TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_leaves_user ON leaves(user_id);
+
+  CREATE TABLE IF NOT EXISTS salary_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    month      TEXT NOT NULL,
+    basic      REAL DEFAULT 0,
+    hra        REAL DEFAULT 0,
+    allowances REAL DEFAULT 0,
+    gross      REAL DEFAULT 0,
+    pf         REAL DEFAULT 0,
+    esic       REAL DEFAULT 0,
+    tds        REAL DEFAULT 0,
+    other_ded  REAL DEFAULT 0,
+    net_salary REAL DEFAULT 0,
+    paid_on    DATE,
+    remarks    TEXT DEFAULT '',
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, month)
+  );
+
+  CREATE TABLE IF NOT EXISTS incentive_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    month      TEXT NOT NULL,
+    amount     REAL DEFAULT 0,
+    reason     TEXT DEFAULT '',
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id   INTEGER NOT NULL REFERENCES users(id),
+    title     TEXT NOT NULL,
+    body      TEXT DEFAULT '',
+    type      TEXT DEFAULT 'info',
+    is_read   INTEGER DEFAULT 0,
+    link      TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read);
+
+  CREATE TABLE IF NOT EXISTS field_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id),
+    customer_name TEXT NOT NULL,
+    visit_time    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    lat  REAL,
+    lng  REAL,
+    photo   TEXT,
+    remarks TEXT DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_visits_user ON field_visits(user_id);
+`);
+
+// Seed leave types
+const insertLT = db.prepare('INSERT OR IGNORE INTO leave_types (code, name, days_per_year, carry_forward) VALUES (?,?,?,?)');
+[['CL','Casual Leave',12,0],['SL','Sick Leave',12,0],['EL','Earned Leave',15,1],['HD','Half Day',24,0]]
+  .forEach(r => insertLT.run(...r));
 
 // Seed admin user
 const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
@@ -371,4 +501,11 @@ function formatINR(n) {
   return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-module.exports = { db, getSettings, getFY, nextQuotationNumber, numberToWords, calcQuotation, formatINR };
+function createNotification(userId, title, body = '', type = 'info', link = '') {
+  try {
+    db.prepare('INSERT INTO notifications (user_id,title,body,type,link) VALUES (?,?,?,?,?)')
+      .run(userId, title, body, type, link);
+  } catch(e) { /* non-critical */ }
+}
+
+module.exports = { db, getSettings, getFY, nextQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification };

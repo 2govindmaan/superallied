@@ -4,8 +4,20 @@ const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
 const path     = require('path');
 const fs       = require('fs');
-const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords } = require('./db');
+const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification } = require('./db');
 const { generatePDF } = require('./pdf');
+
+// ── File storage setup ────────────────────────────────────────────────────────
+const DATA_DIR    = path.dirname(process.env.DB_PATH || path.join(__dirname, 'data', 'quotation.db'));
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+// ── HR route modules ──────────────────────────────────────────────────────────
+const attendanceRoutes = require('./routes/attendance');
+const leavesRoutes     = require('./routes/leaves');
+const salaryRoutes     = require('./routes/salary');
+const hrRoutes         = require('./routes/hr');
+const notifyRoutes     = require('./routes/notify');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -19,12 +31,15 @@ const PAYMENT_QR_B64 = fs.existsSync(QR_PATH)
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Make UPLOADS_DIR accessible to route modules via app.locals
+app.locals.UPLOADS_DIR = UPLOADS_DIR;
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));  // increased for base64 photo uploads
 app.use(session({
   secret: process.env.SESSION_SECRET || 'superallied-secret-2026',
   resave: false,
@@ -56,12 +71,15 @@ function requireAdmin(req, res, next) {
   res.redirect('/');
 }
 
-// Inject current user + settings into all views
+// Inject current user + settings + notification count into all views
 app.use((req, res, next) => {
   res.locals.user = req.session.userId
     ? db.prepare('SELECT id, username, full_name, role FROM users WHERE id = ?').get(req.session.userId)
     : null;
   res.locals.settings = getSettings();
+  res.locals.unreadCount = req.session.userId
+    ? (db.prepare('SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0').get(req.session.userId)?.c || 0)
+    : 0;
   next();
 });
 
@@ -431,6 +449,75 @@ app.get('/api/customers/search', requireLogin, (req, res) => {
   const q = req.query.q || '';
   const rows = db.prepare("SELECT id, name, phone, gstin FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT 10").all(`%${q}%`, `%${q}%`);
   res.json(rows);
+});
+
+// ── Photo upload API ──────────────────────────────────────────────────────────
+app.post('/api/upload', requireLogin, (req, res) => {
+  const { data, folder } = req.body;
+  if (!data?.startsWith('data:image')) return res.status(400).json({ error: 'Invalid image data' });
+  const allowedFolders = ['attendance', 'employees', 'visits', 'expenses'];
+  const safe = allowedFolders.includes(folder) ? folder : 'misc';
+  const dir  = path.join(UPLOADS_DIR, safe);
+  fs.mkdirSync(dir, { recursive: true });
+  const fname = `${Date.now()}-${req.session.userId}-${Math.random().toString(36).slice(2)}.jpg`;
+  fs.writeFileSync(path.join(dir, fname), Buffer.from(data.split(',')[1], 'base64'));
+  res.json({ ok: true, path: `/uploads/${safe}/${fname}` });
+});
+
+// Serve uploaded files (auth-gated)
+app.use('/uploads', requireLogin, express.static(UPLOADS_DIR));
+
+// ── My ID Card ─────────────────────────────────────────────────────────────────
+app.get('/id-card', requireLogin, async (req, res) => {
+  const QRCode = require('qrcode');
+  const emp    = db.prepare('SELECT * FROM users WHERE id=?').get(req.session.userId);
+  const s      = getSettings();
+  const qrData = `EMP:${emp.employee_code || emp.id}|${emp.full_name}`;
+  const qrDataUrl = await QRCode.toDataURL(qrData, { width: 120, margin: 1 });
+  res.render('id-card', { title: 'My ID Card', emp, settings: s, qrDataUrl, adminView: false });
+});
+
+app.get('/id-card/pdf', requireLogin, async (req, res) => {
+  const QRCode = require('qrcode');
+  const emp    = db.prepare('SELECT * FROM users WHERE id=?').get(req.session.userId);
+  const s      = getSettings();
+  const qrData = `EMP:${emp.employee_code || emp.id}|${emp.full_name}`;
+  const qrDataUrl = await QRCode.toDataURL(qrData, { width: 140, margin: 1 });
+  const html = await new Promise((resolve, reject) =>
+    res.app.render('id-card-pdf', { emp, settings: s, qrDataUrl },
+      (err, h) => err ? reject(err) : resolve(h)));
+  const pdfBuffer = await generatePDF(html);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="IDCard-${emp.employee_code || emp.id}.pdf"`);
+  res.send(pdfBuffer);
+});
+
+// ── Role guards ───────────────────────────────────────────────────────────────
+function requireManagerOrAdmin(req, res, next) {
+  const role = res.locals.user?.role;
+  if (['admin','manager'].includes(role)) return next();
+  req.session.flash = { error: 'Manager or Admin access required.' };
+  res.redirect('/');
+}
+
+// ── Mount HR modules ──────────────────────────────────────────────────────────
+app.use('/attendance',    requireLogin, attendanceRoutes);
+app.use('/leaves',        requireLogin, leavesRoutes);
+app.use('/salary',        requireLogin, salaryRoutes);
+app.use('/notifications', requireLogin, notifyRoutes);
+app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
+
+// ── HR redirect ────────────────────────────────────────────────────────────────
+app.get('/hr', requireLogin, (req, res) => {
+  const role = res.locals.user?.role;
+  if (['admin','manager'].includes(role)) return res.redirect('/hr/dashboard');
+  res.redirect('/attendance');
+});
+
+// ── API: employee list (for HR dropdowns) ─────────────────────────────────────
+app.get('/api/hr/employees', requireLogin, (req, res) => {
+  const employees = db.prepare("SELECT id, full_name, employee_code, department FROM users WHERE is_hr_active=1 ORDER BY full_name").all();
+  res.json(employees);
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────────
