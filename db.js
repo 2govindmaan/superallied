@@ -254,6 +254,82 @@ db.exec(`
 // Add is_active column to leave_types if missing
 try { db.exec("ALTER TABLE leave_types ADD COLUMN is_active INTEGER DEFAULT 1"); } catch(e) {}
 
+// ── Lead Management Tables ────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS leads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_number TEXT UNIQUE NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+
+    sh_name TEXT DEFAULT '',
+    team_member TEXT DEFAULT '',
+    state TEXT DEFAULT '',
+    dealer_location TEXT DEFAULT '',
+    district TEXT DEFAULT '',
+    tehsil TEXT DEFAULT '',
+    village_city TEXT DEFAULT '',
+
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT DEFAULT '',
+    model_required TEXT DEFAULT '',
+    who_visited TEXT DEFAULT '',
+
+    visit1_date TEXT DEFAULT NULL,
+    visit2_date TEXT DEFAULT NULL,
+    visit3_date TEXT DEFAULT NULL,
+
+    demo_seen INTEGER DEFAULT 0,
+    expected_purchase_date TEXT DEFAULT NULL,
+    customer_interested INTEGER DEFAULT 0,
+    margin_money_available TEXT DEFAULT '',
+    customer_category TEXT DEFAULT 'FTB',
+
+    current_stage INTEGER DEFAULT 1,
+    status TEXT DEFAULT 'active',
+
+    docs_submitted INTEGER DEFAULT 0,
+    guarantor_docs_submitted INTEGER DEFAULT 0,
+    guarantor_name TEXT DEFAULT '',
+    cibil_customer TEXT DEFAULT '',
+    cibil_guarantor TEXT DEFAULT '',
+
+    fi_done INTEGER DEFAULT 0,
+    fi_result TEXT DEFAULT '',
+    financier_name TEXT DEFAULT '',
+    financier_exec_name TEXT DEFAULT '',
+    exec_contact TEXT DEFAULT '',
+
+    loan_amount_required TEXT DEFAULT '',
+    credit_query_resolved INTEGER DEFAULT 0,
+    credit_approval_raised INTEGER DEFAULT 0,
+    loan_sanctioned INTEGER DEFAULT 0,
+    loan_amount TEXT DEFAULT '',
+
+    do_expected_date TEXT DEFAULT NULL,
+    do_issued INTEGER DEFAULT 0,
+    margin_money_status TEXT DEFAULT '',
+    billing_done INTEGER DEFAULT 0,
+    invoice_done INTEGER DEFAULT 0,
+    insurance_done INTEGER DEFAULT 0,
+    form_21_22 INTEGER DEFAULT 0,
+
+    margin_money_receipt INTEGER DEFAULT 0,
+    ltt_receipt INTEGER DEFAULT 0,
+    rc_submitted INTEGER DEFAULT 0,
+
+    customer_assets TEXT DEFAULT '',
+    other_income TEXT DEFAULT '',
+    work_order INTEGER DEFAULT 0,
+    remarks TEXT DEFAULT '',
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_leads_created_by ON leads(created_by);
+  CREATE INDEX IF NOT EXISTS idx_leads_stage ON leads(current_stage);
+  CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
+`);
+
 // Role-based permissions table
 db.exec(`
   CREATE TABLE IF NOT EXISTS role_permissions (

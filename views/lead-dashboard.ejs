@@ -1,0 +1,209 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'leads', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-bar-chart-fill text-danger me-2"></i>Leads Dashboard</h4>
+    <div class="d-flex gap-2">
+      <a href="/leads/pipeline" class="btn btn-outline-secondary btn-sm"><i class="bi bi-kanban me-1"></i>Pipeline</a>
+      <a href="/leads" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list me-1"></i>List</a>
+      <a href="/leads/new" class="btn btn-danger btn-sm"><i class="bi bi-plus-lg me-1"></i>New Lead</a>
+    </div>
+  </div>
+
+  <!-- Summary stat cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-primary-subtle text-primary mb-2"><i class="bi bi-funnel-fill fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= totalLeads %></h3>
+          <small class="text-muted">Total Leads</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-warning-subtle text-warning mb-2"><i class="bi bi-activity fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= totalActive %></h3>
+          <small class="text-muted">Active Leads</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-success-subtle text-success mb-2"><i class="bi bi-trophy fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= totalWon %></h3>
+          <small class="text-muted">Won</small>
+          <% if(totalLeads > 0) { %><div class="small text-success fw-semibold"><%= Math.round((totalWon/totalLeads)*100) %>% conversion</div><% } %>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="stat-icon bg-danger-subtle text-danger mb-2"><i class="bi bi-calendar-plus fs-3"></i></div>
+          <h3 class="fw-bold mb-0"><%= newThisMonth %></h3>
+          <small class="text-muted">New This Month</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+
+    <!-- Stage funnel -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-2"><span class="fw-semibold">Pipeline Funnel</span></div>
+        <div class="card-body">
+          <% const stageMap = {}; byStage.forEach(r => stageMap[r.current_stage] = r.c); %>
+          <% const maxCount = Math.max(...Object.values(stageMap), 1); %>
+          <% for(let s=1; s<=5; s++) { %>
+          <% const cnt = stageMap[s] || 0; %>
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="small fw-semibold">
+                <span class="badge bg-<%= ['','primary','info','warning','danger','success'][s] %>"><%= s %></span>
+                <%= STAGES[s].label %>
+              </span>
+              <span class="small fw-bold"><%= cnt %></span>
+            </div>
+            <div class="progress" style="height:18px">
+              <div class="progress-bar bg-<%= ['','primary','info','warning','danger','success'][s] %>"
+                   style="width:<%= cnt > 0 ? Math.max(5, (cnt/maxCount)*100) : 0 %>%">
+                <% if(cnt > 0) { %><%= cnt %><% } %>
+              </div>
+            </div>
+          </div>
+          <% } %>
+          <div class="d-flex gap-3 mt-3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-success">Won</span>
+              <span class="fw-bold"><%= totalWon %></span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-danger">Lost</span>
+              <span class="fw-bold"><%= totalLost %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- By Model -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-2"><span class="fw-semibold">Leads by Model</span></div>
+        <div class="card-body">
+          <% if (!byModel.length) { %>
+          <div class="text-center text-muted py-3">No data</div>
+          <% } %>
+          <% const maxModel = Math.max(...byModel.map(r => r.c), 1); %>
+          <% byModel.forEach(r => { %>
+          <div class="mb-2">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="small text-truncate me-2" style="max-width:200px" title="<%= r.model_required %>"><%= r.model_required %></span>
+              <span class="small fw-bold"><%= r.c %></span>
+            </div>
+            <div class="progress" style="height:10px">
+              <div class="progress-bar bg-danger" style="width:<%= (r.c/maxModel)*100 %>%"></div>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- By Team Member (admin/manager only) -->
+  <% if (allAccess && byMember.length) { %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-2"><span class="fw-semibold">Performance by Team Member</span></div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Team Member</th>
+            <th class="text-center">Total</th>
+            <th class="text-center">Active</th>
+            <th class="text-center">Won</th>
+            <th class="text-center">Lost</th>
+            <th>Win Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% byMember.forEach(m => { %>
+          <tr>
+            <td class="fw-semibold"><%= m.full_name || 'Unknown' %></td>
+            <td class="text-center"><%= m.total %></td>
+            <td class="text-center"><span class="badge bg-primary-subtle text-primary"><%= m.active %></span></td>
+            <td class="text-center"><span class="badge bg-success-subtle text-success"><%= m.won %></span></td>
+            <td class="text-center"><span class="badge bg-danger-subtle text-danger"><%= m.lost %></span></td>
+            <td>
+              <% const wr = m.total > 0 ? Math.round((m.won/m.total)*100) : 0; %>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:6px">
+                  <div class="progress-bar bg-success" style="width:<%= wr %>%"></div>
+                </div>
+                <span><%= wr %>%</span>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Recent leads -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+      <span class="fw-semibold">Recently Updated Leads</span>
+      <a href="/leads" class="btn btn-sm btn-outline-secondary">View All</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Lead #</th>
+            <th>Customer</th>
+            <th>Model</th>
+            <th>Stage</th>
+            <th>Status</th>
+            <% if(allAccess) { %><th>Created By</th><% } %>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% recentLeads.forEach(l => { %>
+          <tr onclick="location.href='/leads/<%= l.id %>'" style="cursor:pointer">
+            <td class="text-danger fw-semibold"><%= l.lead_number %></td>
+            <td>
+              <div><%= l.customer_name %></div>
+              <% if(l.customer_phone) { %><small class="text-muted"><%= l.customer_phone %></small><% } %>
+            </td>
+            <td><%= l.model_required || '—' %></td>
+            <td>
+              <% if(l.status === 'won') { %>
+                <span class="badge bg-success">Won</span>
+              <% } else if(l.status === 'lost') { %>
+                <span class="badge bg-danger">Lost</span>
+              <% } else { %>
+                <span class="badge bg-<%= ['','primary','info','warning','danger','success'][l.current_stage]||'secondary' %>">S<%= l.current_stage %></span>
+              <% } %>
+            </td>
+            <td><span class="badge <%= l.status==='active'?'bg-light text-dark border':l.status==='won'?'bg-success':'bg-danger' %>"><%= l.status %></span></td>
+            <% if(allAccess) { %><td><small class="text-muted"><%= l.creator_name || '—' %></small></td><% } %>
+            <td><small class="text-muted"><%= new Date(l.updated_at).toLocaleDateString('en-IN') %></small></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

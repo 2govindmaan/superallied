@@ -1,0 +1,419 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'leads', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-funnel-fill text-danger me-2"></i><%= lead && lead.id ? `Edit Lead — ${lead.lead_number}` : 'New Lead' %></h4>
+    <a href="/leads<%= lead && lead.id ? `/${lead.id}` : '' %>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <% if (flash.error) { %><div class="alert alert-danger alert-dismissible py-2"><%= flash.error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <form method="post" action="<%= lead && lead.id ? `/leads/${lead.id}` : '/leads' %>">
+
+    <!-- Stage progress bar (edit mode) -->
+    <% if (lead && lead.id) { %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <small class="fw-semibold text-muted">PIPELINE STAGE</small>
+          <div>
+            <label class="form-label mb-0 me-2 small">Set Stage:</label>
+            <select name="current_stage" class="form-select form-select-sm d-inline-block w-auto">
+              <% for(let s=1;s<=5;s++) { %>
+              <option value="<%= s %>" <%= lead.current_stage==s?'selected':'' %>>Stage <%= s %>: <%= STAGES[s].label %></option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="progress" style="height:6px">
+          <div class="progress-bar bg-danger" style="width:<%= (lead.current_stage/5)*100 %>%"></div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <input type="hidden" name="current_stage" value="1">
+    <% } %>
+
+    <!-- Tab navigation -->
+    <ul class="nav nav-tabs mb-3" id="leadTabs">
+      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-basic"><i class="bi bi-person me-1"></i>Basic Info</a></li>
+      <% if (lead && lead.id) { %>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-s1"><i class="bi bi-file-earmark-check me-1"></i>Stage 1 – Docs</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-s2"><i class="bi bi-bank me-1"></i>Stage 2 – Finance</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-s3"><i class="bi bi-cash-coin me-1"></i>Stage 3 – Loan</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-s4"><i class="bi bi-truck me-1"></i>Stage 4 – DO</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-s5"><i class="bi bi-patch-check me-1"></i>Stage 5 – Post Delivery</a></li>
+      <% } %>
+    </ul>
+
+    <div class="tab-content">
+
+      <!-- Basic Info Tab -->
+      <div class="tab-pane fade show active" id="tab-basic">
+        <div class="row g-3">
+
+          <!-- Team info -->
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-light py-2"><span class="fw-semibold small">Team Information</span></div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">SH / RM Name</label>
+                    <input type="text" class="form-control" name="sh_name" value="<%= lead?.sh_name||'' %>" placeholder="Sales Head / RM">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Team Member Name</label>
+                    <input type="text" class="form-control" name="team_member" value="<%= lead?.team_member||'' %>" placeholder="DSE / ASP name">
+                  </div>
+                  <% if (user.role === 'admin' || user.role === 'manager') { %>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Assign To</label>
+                    <select class="form-select" name="created_by">
+                      <option value="">— Self —</option>
+                      <% staff.forEach(s => { %>
+                      <option value="<%= s.id %>" <%= lead?.created_by==s.id?'selected':'' %>><%= s.full_name %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location -->
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-light py-2"><span class="fw-semibold small">Location</span></div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">State</label>
+                    <input type="text" class="form-control" name="state" value="<%= lead?.state||'' %>" placeholder="e.g. UTTARAKHAND">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Dealer / Location</label>
+                    <input type="text" class="form-control" name="dealer_location" value="<%= lead?.dealer_location||'' %>" placeholder="e.g. DEHRADUN">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">District</label>
+                    <input type="text" class="form-control" name="district" value="<%= lead?.district||'' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Tehsil / Taluka</label>
+                    <input type="text" class="form-control" name="tehsil" value="<%= lead?.tehsil||'' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Village / City</label>
+                    <input type="text" class="form-control" name="village_city" value="<%= lead?.village_city||'' %>">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Customer -->
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-light py-2"><span class="fw-semibold small">Customer Details <span class="text-danger">*</span></span></div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-5">
+                    <label class="form-label small fw-semibold">Customer Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control <%= errors.customer_name?'is-invalid':'' %>" name="customer_name" value="<%= lead?.customer_name||'' %>" required>
+                    <% if(errors.customer_name) { %><div class="invalid-feedback"><%= errors.customer_name %></div><% } %>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Contact Number</label>
+                    <input type="text" class="form-control" name="customer_phone" value="<%= lead?.customer_phone||'' %>" placeholder="10-digit mobile">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Category</label>
+                    <select class="form-select" name="customer_category">
+                      <option value="FTB" <%= lead?.customer_category!=='RTB'?'selected':'' %>>FTB (First Time Buyer)</option>
+                      <option value="RTB" <%= lead?.customer_category==='RTB'?'selected':'' %>>RTB (Repeat Buyer)</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Model Required</label>
+                    <select class="form-select" name="model_required">
+                      <option value="">— Select Model —</option>
+                      <% machines.forEach(m => { %>
+                      <option value="<%= m.model_code %>" <%= lead?.model_required===m.model_code?'selected':'' %>><%= m.display_name %></option>
+                      <% }) %>
+                      <option value="SD-76" <%= lead?.model_required==='SD-76'?'selected':'' %>>SD-76 (unspecified)</option>
+                      <option value="Other" <%= lead?.model_required==='Other'?'selected':'' %>>Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Margin Money Available</label>
+                    <input type="text" class="form-control" name="margin_money_available" value="<%= lead?.margin_money_available||'' %>" placeholder="e.g. 5 LAKHS">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Who Visited</label>
+                    <input type="text" class="form-control" name="who_visited" value="<%= lead?.who_visited||'' %>" placeholder="e.g. DEEPAK, DSE, ASP">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visits & Interest -->
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-light py-2"><span class="fw-semibold small">Visit Tracking & Interest</span></div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">1st Visit Date</label>
+                    <input type="date" class="form-control" name="visit1_date" value="<%= lead?.visit1_date ? lead.visit1_date.slice(0,10) : '' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">2nd Visit Date</label>
+                    <input type="date" class="form-control" name="visit2_date" value="<%= lead?.visit2_date ? lead.visit2_date.slice(0,10) : '' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">3rd Visit Date</label>
+                    <input type="date" class="form-control" name="visit3_date" value="<%= lead?.visit3_date ? lead.visit3_date.slice(0,10) : '' %>">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Expected Purchase Date</label>
+                    <input type="date" class="form-control" name="expected_purchase_date" value="<%= lead?.expected_purchase_date ? lead.expected_purchase_date.slice(0,10) : '' %>">
+                  </div>
+                  <div class="col-md-4 d-flex gap-4 align-items-center pt-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="demo_seen" value="1" <%= lead?.demo_seen?'checked':'' %> id="chkDemo">
+                      <label class="form-check-label small" for="chkDemo">Demo Seen</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="customer_interested" value="1" <%= lead?.customer_interested?'checked':'' %> id="chkInterest">
+                      <label class="form-check-label small" for="chkInterest">Customer Interested</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assets & Remarks -->
+          <div class="col-12">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-light py-2"><span class="fw-semibold small">Assets & Remarks</span></div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Existing Machine / Asset</label>
+                    <input type="text" class="form-control" name="customer_assets" value="<%= lead?.customer_assets||'' %>" placeholder="e.g. JCB, Tractor">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Other Source of Income</label>
+                    <input type="text" class="form-control" name="other_income" value="<%= lead?.other_income||'' %>" placeholder="e.g. Contractor, Hirer">
+                  </div>
+                  <div class="col-md-4 pt-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="work_order" value="1" <%= lead?.work_order?'checked':'' %> id="chkWorkOrder">
+                      <label class="form-check-label small" for="chkWorkOrder">Has Work Order</label>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold">Remarks / Notes</label>
+                    <textarea class="form-control" name="remarks" rows="3" placeholder="Any notes about the customer or lead…"><%= lead?.remarks||'' %></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-basic -->
+
+      <% if (lead && lead.id) { %>
+
+      <!-- Stage 1: Documentation & CIBIL -->
+      <div class="tab-pane fade" id="tab-s1">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header py-2 bg-primary-subtle"><span class="fw-semibold small text-primary">Stage 1 — Documentation & CIBIL</span></div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="docs_submitted" value="1" <%= lead.docs_submitted?'checked':'' %> id="swDocs">
+                  <label class="form-check-label fw-semibold" for="swDocs">Customer Documents Submitted</label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="guarantor_docs_submitted" value="1" <%= lead.guarantor_docs_submitted?'checked':'' %> id="swGuaDocs">
+                  <label class="form-check-label fw-semibold" for="swGuaDocs">Guarantor Documents Submitted</label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Guarantor Name</label>
+                <input type="text" class="form-control" name="guarantor_name" value="<%= lead.guarantor_name||'' %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">CIBIL Score — Customer</label>
+                <input type="text" class="form-control" name="cibil_customer" value="<%= lead.cibil_customer||'' %>" placeholder="e.g. 750">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">CIBIL Score — Guarantor</label>
+                <input type="text" class="form-control" name="cibil_guarantor" value="<%= lead.cibil_guarantor||'' %>" placeholder="e.g. 720">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 2: Finance Investigation -->
+      <div class="tab-pane fade" id="tab-s2">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header py-2 bg-info-subtle"><span class="fw-semibold small text-info">Stage 2 — Finance Investigation (FI)</span></div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="fi_done" value="1" <%= lead.fi_done?'checked':'' %> id="swFI">
+                  <label class="form-check-label fw-semibold" for="swFI">FI Done by Financier</label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">FI Result</label>
+                <select class="form-select" name="fi_result">
+                  <option value="">— Pending —</option>
+                  <option value="Positive" <%= lead.fi_result==='Positive'?'selected':'' %>>Positive</option>
+                  <option value="Negative" <%= lead.fi_result==='Negative'?'selected':'' %>>Negative</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Financier Name</label>
+                <input type="text" class="form-control" name="financier_name" value="<%= lead.financier_name||'' %>" placeholder="e.g. HDFC, Mahindra Finance">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Financier Executive Name</label>
+                <input type="text" class="form-control" name="financier_exec_name" value="<%= lead.financier_exec_name||'' %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Executive Contact</label>
+                <input type="text" class="form-control" name="exec_contact" value="<%= lead.exec_contact||'' %>">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 3: Loan Processing -->
+      <div class="tab-pane fade" id="tab-s3">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header py-2 bg-warning-subtle"><span class="fw-semibold small text-warning">Stage 3 — Loan Processing</span></div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Loan Amount Required</label>
+                <input type="text" class="form-control" name="loan_amount_required" value="<%= lead.loan_amount_required||'' %>" placeholder="e.g. 26 LAKHS">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Loan Sanctioned Amount</label>
+                <input type="text" class="form-control" name="loan_amount" value="<%= lead.loan_amount||'' %>" placeholder="Actual sanctioned amount">
+              </div>
+              <div class="col-12 d-flex flex-wrap gap-4 pt-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="credit_query_resolved" value="1" <%= lead.credit_query_resolved?'checked':'' %> id="swCQ">
+                  <label class="form-check-label fw-semibold" for="swCQ">Credit Query Resolved</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="credit_approval_raised" value="1" <%= lead.credit_approval_raised?'checked':'' %> id="swCA">
+                  <label class="form-check-label fw-semibold" for="swCA">Credit Approval Raised in System</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="loan_sanctioned" value="1" <%= lead.loan_sanctioned?'checked':'' %> id="swLS">
+                  <label class="form-check-label fw-semibold" for="swLS">Loan Sanctioned</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 4: Delivery Order -->
+      <div class="tab-pane fade" id="tab-s4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header py-2" style="background:#fff3e0"><span class="fw-semibold small" style="color:#e65100">Stage 4 — Delivery Order (DO)</span></div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">DO Expected By Date</label>
+                <input type="date" class="form-control" name="do_expected_date" value="<%= lead.do_expected_date ? lead.do_expected_date.slice(0,10) : '' %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Margin Money Status</label>
+                <select class="form-select" name="margin_money_status">
+                  <option value="">— Select —</option>
+                  <option value="Pending" <%= lead.margin_money_status==='Pending'?'selected':'' %>>Pending</option>
+                  <option value="Received" <%= lead.margin_money_status==='Received'?'selected':'' %>>Received</option>
+                  <option value="Partial" <%= lead.margin_money_status==='Partial'?'selected':'' %>>Partial</option>
+                </select>
+              </div>
+              <div class="col-12 d-flex flex-wrap gap-4 pt-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="do_issued" value="1" <%= lead.do_issued?'checked':'' %> id="swDO">
+                  <label class="form-check-label fw-semibold" for="swDO">DO Issued</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="billing_done" value="1" <%= lead.billing_done?'checked':'' %> id="swBilling">
+                  <label class="form-check-label fw-semibold" for="swBilling">Billing Done</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="invoice_done" value="1" <%= lead.invoice_done?'checked':'' %> id="swInvoice">
+                  <label class="form-check-label fw-semibold" for="swInvoice">Invoice</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="insurance_done" value="1" <%= lead.insurance_done?'checked':'' %> id="swInsurance">
+                  <label class="form-check-label fw-semibold" for="swInsurance">Insurance</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="form_21_22" value="1" <%= lead.form_21_22?'checked':'' %> id="swForm">
+                  <label class="form-check-label fw-semibold" for="swForm">Form 21/22</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage 5: Post Delivery -->
+      <div class="tab-pane fade" id="tab-s5">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header py-2 bg-success-subtle"><span class="fw-semibold small text-success">Stage 5 — Post Delivery</span></div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 d-flex flex-wrap gap-4">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="margin_money_receipt" value="1" <%= lead.margin_money_receipt?'checked':'' %> id="swMMR">
+                  <label class="form-check-label fw-semibold" for="swMMR">Margin Money Receipt</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="ltt_receipt" value="1" <%= lead.ltt_receipt?'checked':'' %> id="swLTT">
+                  <label class="form-check-label fw-semibold" for="swLTT">LTT Receipt</label>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="rc_submitted" value="1" <%= lead.rc_submitted?'checked':'' %> id="swRC">
+                  <label class="form-check-label fw-semibold" for="swRC">RC Submitted</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <% } %> <!-- end if lead.id -->
+
+    </div><!-- /tab-content -->
+
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" class="btn btn-danger"><i class="bi bi-check-lg me-1"></i><%= lead && lead.id ? 'Save Changes' : 'Create Lead' %></button>
+      <a href="/leads<%= lead && lead.id ? `/${lead.id}` : '' %>" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+
+  </form>
+</div>

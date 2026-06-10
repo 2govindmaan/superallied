@@ -42,6 +42,13 @@
       </a>
     </li>
 
+    <!-- Lead Management -->
+    <li class="nav-item">
+      <a href="/leads" class="nav-link text-white <%= active==='leads'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-funnel-fill me-2"></i>Lead Management
+      </a>
+    </li>
+
     <!-- Sales / Quotations (permission-gated) -->
     <% if (hasPerm('quotations')) { %>
     <li class="nav-item">

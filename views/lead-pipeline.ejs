@@ -1,0 +1,102 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'leads', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-kanban text-danger me-2"></i>Lead Pipeline</h4>
+    <div class="d-flex gap-2">
+      <a href="/leads" class="btn btn-outline-secondary btn-sm"><i class="bi bi-list me-1"></i>List View</a>
+      <a href="/leads/dashboard" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bar-chart me-1"></i>Dashboard</a>
+      <a href="/leads/new" class="btn btn-danger btn-sm"><i class="bi bi-plus-lg me-1"></i>New Lead</a>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3 overflow-auto pb-3" style="min-height:calc(100vh - 160px)">
+
+    <% for(let s=1; s<=5; s++) { %>
+    <div class="flex-shrink-0" style="width:280px">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header py-2 d-flex align-items-center gap-2"
+             style="background:<%= ['','#e3f2fd','#e0f7fa','#fff8e1','#fff3e0','#e8f5e9'][s] %>">
+          <span class="badge bg-<%= ['','primary','info','warning','danger','success'][s] %>"><%= s %></span>
+          <span class="fw-semibold small"><%= STAGES[s].label %></span>
+          <span class="badge bg-secondary ms-auto"><%= pipeline[s].length %></span>
+        </div>
+        <div class="card-body p-2" style="overflow-y:auto;max-height:calc(100vh - 220px)">
+          <% if (!pipeline[s].length) { %>
+          <div class="text-center text-muted small py-3">No leads</div>
+          <% } %>
+          <% pipeline[s].forEach(l => { %>
+          <div class="card mb-2 border-0 shadow-sm" style="cursor:pointer" onclick="location.href='/leads/<%= l.id %>'">
+            <div class="card-body p-2">
+              <div class="d-flex justify-content-between align-items-start">
+                <small class="text-danger fw-semibold"><%= l.lead_number %></small>
+                <span class="badge <%= l.customer_category==='RTB'?'bg-success-subtle text-success':'bg-primary-subtle text-primary' %>" style="font-size:9px"><%= l.customer_category %></span>
+              </div>
+              <div class="fw-semibold small mt-1"><%= l.customer_name %></div>
+              <% if(l.customer_phone) { %><div class="text-muted" style="font-size:11px"><i class="bi bi-telephone me-1"></i><%= l.customer_phone %></div><% } %>
+              <% if(l.model_required) { %><div class="text-muted" style="font-size:11px"><i class="bi bi-gear me-1"></i><%= l.model_required %></div><% } %>
+              <% if(l.dealer_location) { %><div class="text-muted" style="font-size:11px"><i class="bi bi-geo-alt me-1"></i><%= l.dealer_location %></div><% } %>
+              <% if(l.expected_purchase_date) { %>
+              <div class="mt-1" style="font-size:11px">
+                <span class="<%= new Date(l.expected_purchase_date) < new Date() ? 'text-danger' : 'text-warning' %>">
+                  <i class="bi bi-calendar me-1"></i><%= new Date(l.expected_purchase_date).toLocaleDateString('en-IN') %>
+                </span>
+              </div>
+              <% } %>
+              <% if(allAccess && l.creator_name) { %>
+              <div class="text-muted mt-1" style="font-size:10px"><i class="bi bi-person me-1"></i><%= l.creator_name %></div>
+              <% } %>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Won column -->
+    <div class="flex-shrink-0" style="width:240px">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header py-2 d-flex align-items-center gap-2 bg-success-subtle">
+          <i class="bi bi-trophy text-success"></i>
+          <span class="fw-semibold small text-success">Won</span>
+          <span class="badge bg-success ms-auto"><%= pipeline.won.length %></span>
+        </div>
+        <div class="card-body p-2" style="overflow-y:auto;max-height:calc(100vh - 220px)">
+          <% pipeline.won.forEach(l => { %>
+          <div class="card mb-2 border-0 border-start border-success border-3 shadow-sm" onclick="location.href='/leads/<%= l.id %>'" style="cursor:pointer">
+            <div class="card-body p-2">
+              <small class="text-danger fw-semibold"><%= l.lead_number %></small>
+              <div class="fw-semibold small"><%= l.customer_name %></div>
+              <% if(l.model_required) { %><div class="text-muted" style="font-size:11px"><%= l.model_required %></div><% } %>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lost column -->
+    <div class="flex-shrink-0" style="width:240px">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header py-2 d-flex align-items-center gap-2 bg-danger-subtle">
+          <i class="bi bi-x-circle text-danger"></i>
+          <span class="fw-semibold small text-danger">Lost</span>
+          <span class="badge bg-danger ms-auto"><%= pipeline.lost.length %></span>
+        </div>
+        <div class="card-body p-2" style="overflow-y:auto;max-height:calc(100vh - 220px)">
+          <% pipeline.lost.forEach(l => { %>
+          <div class="card mb-2 border-0 border-start border-danger border-3 shadow-sm" onclick="location.href='/leads/<%= l.id %>'" style="cursor:pointer">
+            <div class="card-body p-2">
+              <small class="text-danger fw-semibold"><%= l.lead_number %></small>
+              <div class="fw-semibold small"><%= l.customer_name %></div>
+              <% if(l.model_required) { %><div class="text-muted" style="font-size:11px"><%= l.model_required %></div><% } %>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
