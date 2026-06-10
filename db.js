@@ -55,6 +55,16 @@ db.exec(`
     active INTEGER DEFAULT 1
   );
 
+  CREATE TABLE IF NOT EXISTS machine_specs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    machine_id INTEGER NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+    spec_name TEXT NOT NULL,
+    spec_value TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_specs_machine ON machine_specs(machine_id);
+
   CREATE TABLE IF NOT EXISTS quotations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     quotation_number TEXT UNIQUE NOT NULL,
@@ -493,6 +503,31 @@ machines.forEach(m => insertMachine.run(
   m.engine, m.transmission, m.rear_axle, m.pump, m.front_tyre, m.rear_tyre,
   m.battery, m.weight, m.bucket, m.warranty
 ));
+
+// ── Initialize default settings ──────────────────────────────────────────────
+const defaultSettings = {
+  company_name: 'Super Allied',
+  company_gstin: '18AABCT5419H1ZO',
+  company_address: 'Address not set',
+  dealer_of: 'Bull Tractors',
+  contact_name: 'Contact Name',
+  contact_phone: '+91-XXXXXXXXXX',
+  bank_beneficiary: 'Bank Account Holder Name',
+  bank_account: 'Account Number',
+  bank_ifsc: 'IFSC Code',
+  bank_branch: 'Branch Name',
+  salesperson_name: 'Govind Maan',
+  salesperson_phone: '+919690014010'
+};
+
+Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
+  try {
+    const existing = db.prepare('SELECT value FROM settings WHERE key=?').get(key);
+    if (!existing) {
+      db.prepare('INSERT INTO settings (key, value) VALUES (?,?)').run(key, defaultValue);
+    }
+  } catch(e) {}
+});
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

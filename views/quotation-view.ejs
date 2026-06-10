@@ -33,7 +33,15 @@
         <div class="card-header bg-white fw-semibold">Machine Details</div>
         <div class="card-body">
           <dl class="row mb-0">
-            <dt class="col-4 text-muted">Machine</dt><dd class="col-8 fw-semibold"><%= q.machine_name %></dd>
+            <dt class="col-4 text-muted">Machine</dt><dd class="col-8"><div class="fw-semibold"><%= q.machine_name %></div>
+              <% if (specs && specs.length > 0) { %>
+                <div class="small text-muted mt-2">
+                  <% specs.forEach(s => { %>
+                    <div><strong><%= s.spec_name %>:</strong> <%= s.spec_value %></div>
+                  <% }) %>
+                </div>
+              <% } %>
+            </dd>
             <dt class="col-4 text-muted">Model Code</dt><dd class="col-8 small font-monospace"><%= q.model_code %></dd>
             <dt class="col-4 text-muted">HSN Code</dt><dd class="col-8"><%= q.hsn_code %></dd>
             <dt class="col-4 text-muted">Engine</dt><dd class="col-8 small"><%= q.engine %></dd>

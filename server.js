@@ -20,6 +20,7 @@ const hrRoutes         = require('./routes/hr');
 const notifyRoutes     = require('./routes/notify');
 const visitsRoutes     = require('./routes/visits');
 const expensesRoutes   = require('./routes/expenses');
+const machinesRoutes   = require('./routes/machines');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -305,7 +306,8 @@ app.get('/quotations/:id', requireLogin, (req, res) => {
   if (!q) return res.redirect('/quotations');
   if (!isAdmin && q.user_id !== req.session.userId) return res.redirect('/quotations');
   const calc = calcQuotation(q);
-  res.render('quotation-view', { title: `Quotation ${q.quotation_number}`, q, calc, formatINR });
+  const specs = db.prepare('SELECT * FROM machine_specs WHERE machine_id=? ORDER BY display_order').all(q.machine_id);
+  res.render('quotation-view', { title: `Quotation ${q.quotation_number}`, q, calc, specs, formatINR });
 });
 
 app.get('/quotations/:id/edit', requireLogin, (req, res) => {
@@ -367,8 +369,9 @@ app.get('/quotations/:id/pdf', requireLogin, async (req, res) => {
 
   const calc = calcQuotation(q);
   const s    = getSettings();
+  const specs = db.prepare('SELECT * FROM machine_specs WHERE machine_id=? ORDER BY display_order').all(q.machine_id);
   const html = await new Promise((resolve, reject) => {
-    res.app.render('quotation-pdf', { q, calc, settings: s, formatINR, numberToWords, bullLogoB64: BULL_LOGO_B64, paymentQrB64: PAYMENT_QR_B64 }, (err, html) => {
+    res.app.render('quotation-pdf', { q, calc, specs, settings: s, formatINR, numberToWords, bullLogoB64: BULL_LOGO_B64, paymentQrB64: PAYMENT_QR_B64 }, (err, html) => {
       if (err) reject(err); else resolve(html);
     });
   });
@@ -555,6 +558,7 @@ app.use('/notifications', requireLogin, notifyRoutes);
 app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
 app.use('/visits',        requireLogin, visitsRoutes);
 app.use('/expenses',      requireLogin, expensesRoutes);
+app.use('/machines',      requireLogin, requireManagerOrAdmin, machinesRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {

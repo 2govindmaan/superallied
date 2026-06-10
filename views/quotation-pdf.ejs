@@ -127,6 +127,9 @@
             <% if(q.battery)      { %><li><%= q.battery %></li><% } %>
             <% if(q.weight)       { %><li><%= q.weight %> - Weight</li><% } %>
             <% if(q.bucket)       { %><li><%= q.bucket %></li><% } %>
+            <% if(specs && specs.length > 0) { %>
+              <% specs.forEach(s => { %><li><%= s.spec_name %> - <%= s.spec_value %></li><% }) %>
+            <% } %>
             <% if(q.warranty)     { %><li><%= q.warranty %></li><% } %>
           </ul>
         </td>
