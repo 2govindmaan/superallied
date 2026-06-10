@@ -219,6 +219,26 @@ db.exec(`
     remarks TEXT DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_visits_user ON field_visits(user_id);
+
+  CREATE TABLE IF NOT EXISTS expense_journeys (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    date       DATE NOT NULL,
+    start_km   REAL,
+    start_photo TEXT,
+    start_lat  REAL,
+    start_lng  REAL,
+    start_time DATETIME,
+    end_km     REAL,
+    end_photo  TEXT,
+    end_lat    REAL,
+    end_lng    REAL,
+    end_time   DATETIME,
+    total_km   REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, date)
+  );
+  CREATE INDEX IF NOT EXISTS idx_journey_user ON expense_journeys(user_id, date);
 `);
 
 // Add is_active column to leave_types if missing

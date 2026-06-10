@@ -19,6 +19,7 @@ const salaryRoutes     = require('./routes/salary');
 const hrRoutes         = require('./routes/hr');
 const notifyRoutes     = require('./routes/notify');
 const visitsRoutes     = require('./routes/visits');
+const expensesRoutes   = require('./routes/expenses');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -553,6 +554,7 @@ app.use('/salary',        requireLogin, salaryRoutes);
 app.use('/notifications', requireLogin, notifyRoutes);
 app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
 app.use('/visits',        requireLogin, visitsRoutes);
+app.use('/expenses',      requireLogin, expensesRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {

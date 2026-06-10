@@ -22,11 +22,10 @@ router.get('/', (req, res) => {
   const uid    = req.session.userId;
   const todayR = today();
 
-  const todayRec = db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(uid, todayR);
+  const todayRec  = db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(uid, todayR);
+  const todayJourney = db.prepare('SELECT * FROM expense_journeys WHERE user_id=? AND date=?').get(uid, todayR);
 
-  const history = db.prepare(`
-    SELECT * FROM attendance WHERE user_id=? ORDER BY date DESC LIMIT 30
-  `).all(uid);
+  const history = db.prepare('SELECT * FROM attendance WHERE user_id=? ORDER BY date DESC LIMIT 30').all(uid);
 
   const stats = db.prepare(`
     SELECT
@@ -36,7 +35,7 @@ router.get('/', (req, res) => {
     FROM attendance WHERE user_id=? AND date >= date('now','-30 days')
   `).get(uid);
 
-  res.render('attendance', { title: 'My Attendance', todayRec, history, stats, todayStr: todayR });
+  res.render('attendance', { title: 'My Attendance', todayRec, todayJourney, history, stats, todayStr: todayR });
 });
 
 // ── API: check-in ─────────────────────────────────────────────────────────────
