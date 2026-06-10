@@ -48,7 +48,7 @@
                 <% machines.filter(m=>m.model_series===s).forEach(m => { %>
                 <option value="<%= m.id %>" data-price="<%= m.basic_price %>"
                   <%= quotation?.machine_id==m.id ? 'selected' : '' %>>
-                  <%= m.display_name %><% if(isAdmin){ %> — ₹<%= formatINR(m.basic_price) %><% } %>
+                  <%= m.display_name %>
                 </option>
                 <% }) %>
               </optgroup>
@@ -60,16 +60,16 @@
                 <label class="form-label fw-semibold">Basic Price (₹) <span class="text-danger">*</span></label>
                 <input type="number" name="basic_price" id="basic_price" class="form-control"
                        value="<%= quotation?.basic_price || '' %>" required oninput="calcTotals()">
-                <small class="text-muted">Auto-filled from catalog, override if needed</small>
+                <small class="text-muted">Auto-filled from MRP, can override</small>
               </div>
               <% } else { %>
               <div class="col-md-6">
                 <input type="hidden" name="basic_price" id="basic_price" value="<%= quotation?.basic_price || '' %>">
-                <label class="form-label fw-semibold">Selling Price</label>
-                <div class="form-control bg-light text-muted" id="basic_price_display">
+                <label class="form-label fw-semibold">MRP (Manufacturer's Price)</label>
+                <div class="form-control bg-light text-success fw-semibold" id="basic_price_display">
                   <%= quotation?.basic_price ? '₹' + formatINR(quotation.basic_price) : 'Select a machine ↑' %>
                 </div>
-                <small class="text-muted">Auto-set from catalog</small>
+                <small class="text-success"><i class="bi bi-lock-fill me-1"></i>Quotations locked to MRP</small>
               </div>
               <% } %>
               <div class="col-md-3">
@@ -332,18 +332,27 @@ function calcTotals(){
   document.getElementById('row_trc').classList.toggle('d-none', trcV === 0);
 }
 
-const STAFF_MARKUP = <%- isAdmin ? 0 : 500000 %>;
-
+// Price is always locked to MRP - no markup for any user
 function loadMachine(id){
   if(!id) return;
   fetch('/api/machines/'+id)
     .then(r=>r.json())
     .then(m=>{
-      const price = m.basic_price + STAFF_MARKUP;
+      const price = m.basic_price; // Always use exact MRP
       document.getElementById('basic_price').value = price;
       const disp = document.getElementById('basic_price_display');
       if(disp) disp.textContent = '₹' + price.toLocaleString('en-IN');
+
+      // Auto-calculate RTO as 6% for non-admin users
+      <% if (!isAdmin) { %>
+      setTimeout(() => {
+        const subTotal = Math.round(price * 1.18); // Rough estimate with tax
+        document.getElementById('trc').value = Math.round(subTotal * 0.06);
+        calcTotals();
+      }, 100);
+      <% } else { %>
       calcTotals();
+      <% } %>
     });
 }
 

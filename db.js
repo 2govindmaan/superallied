@@ -517,7 +517,9 @@ const defaultSettings = {
   bank_ifsc: 'IFSC Code',
   bank_branch: 'Branch Name',
   salesperson_name: 'Govind Maan',
-  salesperson_phone: '+919690014010'
+  salesperson_phone: '+919690014010',
+  rto_default_rate: '6',
+  price_lock_enabled: '1'
 };
 
 Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
