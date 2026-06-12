@@ -684,4 +684,126 @@ function createNotification(userId, title, body = '', type = 'info', link = '') 
   } catch(e) { /* non-critical */ }
 }
 
-module.exports = { db, getSettings, getFY, nextQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions };
+// ── Spare Parts System Tables ─────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sold_machines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    machine_no TEXT UNIQUE NOT NULL,
+    chassis_number TEXT DEFAULT '',
+    engine_number TEXT DEFAULT '',
+    model TEXT DEFAULT '',
+    customer_name TEXT NOT NULL,
+    customer_address TEXT DEFAULT '',
+    place_of_supply TEXT DEFAULT '',
+    contact_person TEXT DEFAULT '',
+    mobile_1 TEXT DEFAULT '',
+    mobile_2 TEXT DEFAULT '',
+    finance_type TEXT DEFAULT 'Cash',
+    financier TEXT DEFAULT '',
+    registration_no TEXT DEFAULT '',
+    gst_number TEXT DEFAULT '',
+    pan_number TEXT DEFAULT '',
+    dealer TEXT DEFAULT '',
+    date_of_sale DATE,
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_sold_machine_no ON sold_machines(machine_no);
+  CREATE INDEX IF NOT EXISTS idx_sold_customer ON sold_machines(customer_name);
+  CREATE INDEX IF NOT EXISTS idx_sold_mobile ON sold_machines(mobile_1);
+
+  CREATE TABLE IF NOT EXISTS spare_parts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sap_part_no TEXT DEFAULT '',
+    rnd_part_no TEXT DEFAULT '',
+    material_description TEXT NOT NULL,
+    hsn_code TEXT DEFAULT '',
+    tax_rate REAL DEFAULT 18,
+    ndp_basic REAL DEFAULT 0,
+    ndp_gst REAL DEFAULT 0,
+    ndp_price REAL DEFAULT 0,
+    mrp_basic REAL DEFAULT 0,
+    mrp_gst REAL DEFAULT 0,
+    mrp_price REAL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_parts_sap ON spare_parts(sap_part_no);
+  CREATE INDEX IF NOT EXISTS idx_parts_rnd ON spare_parts(rnd_part_no);
+
+  CREATE TABLE IF NOT EXISTS spare_quotations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quotation_no TEXT UNIQUE NOT NULL,
+    serial_number INTEGER NOT NULL,
+    financial_year TEXT NOT NULL,
+    sold_machine_id INTEGER REFERENCES sold_machines(id),
+    machine_no TEXT DEFAULT '',
+    customer_name TEXT NOT NULL,
+    customer_address TEXT DEFAULT '',
+    customer_gstin TEXT DEFAULT '',
+    contact_person TEXT DEFAULT '',
+    mobile TEXT DEFAULT '',
+    place_of_supply TEXT DEFAULT '',
+    tax_mode TEXT DEFAULT 'CGST_SGST',
+    salesperson TEXT DEFAULT '',
+    validity_days INTEGER DEFAULT 30,
+    remarks TEXT DEFAULT '',
+    terms TEXT DEFAULT 'Prices are subject to change without notice.\nGoods once sold will not be taken back.\nAll disputes subject to Meerut jurisdiction.',
+    status TEXT DEFAULT 'draft',
+    total_basic REAL DEFAULT 0,
+    total_gst REAL DEFAULT 0,
+    grand_total REAL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_sq_machine_no ON spare_quotations(machine_no);
+  CREATE INDEX IF NOT EXISTS idx_sq_date ON spare_quotations(created_at);
+  CREATE INDEX IF NOT EXISTS idx_sq_status ON spare_quotations(status);
+
+  CREATE TABLE IF NOT EXISTS spare_quotation_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quotation_id INTEGER NOT NULL REFERENCES spare_quotations(id) ON DELETE CASCADE,
+    part_no TEXT DEFAULT '',
+    description TEXT NOT NULL,
+    hsn TEXT DEFAULT '',
+    qty REAL DEFAULT 1,
+    basic_rate REAL DEFAULT 0,
+    discount_percent REAL DEFAULT 0,
+    discount_amount REAL DEFAULT 0,
+    tax_rate REAL DEFAULT 18,
+    tax_amount REAL DEFAULT 0,
+    net_rate REAL DEFAULT 0,
+    line_total REAL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_sqi_quotation ON spare_quotation_items(quotation_id);
+
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    action TEXT NOT NULL,
+    entity TEXT DEFAULT '',
+    entity_id TEXT DEFAULT '',
+    details TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity, entity_id);
+`);
+
+function nextSpareQuotationNumber() {
+  const fy = getFY();
+  const row = db.prepare('SELECT MAX(serial_number) as max FROM spare_quotations WHERE financial_year = ?').get(fy);
+  const serial = (row.max || 0) + 1;
+  const padded = String(serial).padStart(4, '0');
+  return { quotationNo: `SP-${fy}/${padded}`, financialYear: fy, serialNumber: serial };
+}
+
+function auditLog(userId, action, entity = '', entityId = '', details = '') {
+  try {
+    db.prepare('INSERT INTO audit_log (user_id,action,entity,entity_id,details) VALUES (?,?,?,?,?)')
+      .run(userId, action, entity, String(entityId), details);
+  } catch(e) {}
+}
+
+module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog };

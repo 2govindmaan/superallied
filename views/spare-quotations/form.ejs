@@ -1,0 +1,427 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'spare-quotations', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-receipt-cutoff me-2 text-success"></i><%= quotation ? quotation.quotation_no : 'New Spare Part Quotation' %></h4>
+    <a href="<%= quotation ? '/spare-quotations/' + quotation.id : '/spare-quotations' %>" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+
+  <% if (flash.error) { %><div class="alert alert-danger"><%= flash.error %></div><% } %>
+
+  <form id="qForm" method="post" action="<%= quotation ? '/spare-quotations/' + quotation.id + '/update' : '/spare-quotations' %>">
+    <input type="hidden" name="items_json" id="itemsJson">
+
+    <div class="row g-3">
+      <!-- Step 1: Machine Lookup -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-primary text-white d-flex align-items-center gap-2">
+            <span class="badge bg-white text-primary fw-bold">1</span>
+            <span class="fw-semibold">Machine Lookup</span>
+          </div>
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Machine No</label>
+                <div class="input-group input-group-sm">
+                  <input type="text" id="machineNoInput" name="machine_no" class="form-control"
+                    value="<%= quotation?.machine_no || machine?.machine_no || '' %>"
+                    placeholder="e.g. BHL2025001">
+                  <button type="button" class="btn btn-primary" onclick="lookupMachine()">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+                <div id="machineMsg" class="small mt-1"></div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Customer Name <span class="text-danger">*</span></label>
+                <input name="customer_name" id="customerName" class="form-control form-control-sm" required
+                  value="<%= quotation?.customer_name || machine?.customer_name || '' %>">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Contact / Mobile</label>
+                <input name="mobile" id="mobile" class="form-control form-control-sm"
+                  value="<%= quotation?.mobile || machine?.mobile_1 || '' %>">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">GST Number</label>
+                <input name="customer_gstin" id="customerGstin" class="form-control form-control-sm text-uppercase"
+                  value="<%= quotation?.customer_gstin || machine?.gst_number || '' %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Customer Address</label>
+                <textarea name="customer_address" id="customerAddress" class="form-control form-control-sm" rows="2"><%= quotation?.customer_address || machine?.customer_address || '' %></textarea>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Place of Supply</label>
+                <input name="place_of_supply" id="placeOfSupply" class="form-control form-control-sm"
+                  value="<%= quotation?.place_of_supply || machine?.place_of_supply || '' %>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Tax Mode</label>
+                <select name="tax_mode" id="taxMode" class="form-select form-select-sm" onchange="recalcAll()">
+                  <option value="CGST_SGST" <%= (quotation?.tax_mode||'CGST_SGST')==='CGST_SGST'?'selected':'' %>>CGST + SGST</option>
+                  <option value="IGST" <%= quotation?.tax_mode==='IGST'?'selected':'' %>>IGST</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Contact Person</label>
+                <input name="contact_person" id="contactPerson" class="form-control form-control-sm"
+                  value="<%= quotation?.contact_person || machine?.contact_person || '' %>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Salesperson</label>
+                <input name="salesperson" class="form-control form-control-sm"
+                  value="<%= quotation?.salesperson || defaultSalesperson || '' %>">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Add Parts -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-warning text-dark d-flex align-items-center gap-2">
+            <span class="badge bg-dark text-warning fw-bold">2</span>
+            <span class="fw-semibold">Search & Add Spare Parts</span>
+          </div>
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-5">
+                <label class="form-label small fw-semibold">Search Part (SAP No / RND No / Description)</label>
+                <div class="position-relative">
+                  <input type="text" id="partSearch" class="form-control form-control-sm" placeholder="Start typing part number or description…" autocomplete="off" oninput="searchParts(this.value)">
+                  <div id="partSuggestions" class="position-absolute bg-white border rounded shadow-sm w-100" style="z-index:1000;display:none;max-height:300px;overflow-y:auto;top:100%"></div>
+                </div>
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small fw-semibold">Qty</label>
+                <input type="number" id="addQty" class="form-control form-control-sm" value="1" min="1" step="0.01">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Rate (Basic)</label>
+                <input type="number" id="addRate" class="form-control form-control-sm" value="0" step="0.01" oninput="previewAdd()">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Discount %</label>
+                <input type="number" id="addDiscount" class="form-control form-control-sm" value="0" min="0" max="100" step="0.01" oninput="previewAdd()">
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-warning text-dark w-100" onclick="addSelectedPart()">
+                  <i class="bi bi-plus-lg me-1"></i>Add Part
+                </button>
+              </div>
+            </div>
+            <div id="selectedPartInfo" class="mt-2 p-2 bg-light rounded small d-none">
+              <strong id="selPartDesc"></strong> &nbsp;|&nbsp; SAP: <span id="selPartSap"></span>
+              &nbsp;|&nbsp; MRP Basic: ₹<span id="selPartMrp"></span>
+              &nbsp;|&nbsp; NDP: ₹<span id="selPartNdp"></span>
+              &nbsp;|&nbsp; Tax: <span id="selPartTax"></span>%
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Line Items Table -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-success text-white d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-white text-success fw-bold">3</span>
+              <span class="fw-semibold">Quotation Items</span>
+            </div>
+            <span class="small" id="itemCount">0 parts</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0" id="itemsTable">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:30px">#</th>
+                  <th>Part No</th>
+                  <th>Description</th>
+                  <th>HSN</th>
+                  <th style="width:70px">Qty</th>
+                  <th style="width:100px">Basic Rate</th>
+                  <th style="width:80px">Disc %</th>
+                  <th style="width:80px">Disc Amt</th>
+                  <th style="width:60px">Tax %</th>
+                  <th style="width:90px">Tax Amt</th>
+                  <th style="width:90px">Net Rate</th>
+                  <th style="width:100px">Line Total</th>
+                  <th style="width:30px"></th>
+                </tr>
+              </thead>
+              <tbody id="itemsTbody">
+                <tr id="emptyRow"><td colspan="13" class="text-center text-muted py-3">No parts added yet. Search and add parts above.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Totals -->
+          <div class="card-footer bg-white">
+            <div class="row justify-content-end">
+              <div class="col-md-4">
+                <table class="table table-sm mb-0">
+                  <tr><td class="text-muted">Total Basic</td><td class="text-end fw-semibold" id="totBasic">₹0.00</td></tr>
+                  <tr id="rowCgst"><td class="text-muted">CGST</td><td class="text-end" id="totCgst">₹0.00</td></tr>
+                  <tr id="rowSgst"><td class="text-muted">SGST</td><td class="text-end" id="totSgst">₹0.00</td></tr>
+                  <tr id="rowIgst" class="d-none"><td class="text-muted">IGST</td><td class="text-end" id="totIgst">₹0.00</td></tr>
+                  <tr class="table-success fw-bold"><td>Grand Total</td><td class="text-end" id="totGrand">₹0.00</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Remarks & Terms -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-semibold small">Remarks & Validity</div>
+          <div class="card-body">
+            <div class="mb-2">
+              <label class="form-label small">Validity (days)</label>
+              <input type="number" name="validity_days" class="form-control form-control-sm" style="max-width:100px"
+                value="<%= quotation?.validity_days || 30 %>">
+            </div>
+            <div>
+              <label class="form-label small">Remarks</label>
+              <textarea name="remarks" class="form-control form-control-sm" rows="3"><%= quotation?.remarks || '' %></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white fw-semibold small">Terms & Conditions</div>
+          <div class="card-body">
+            <textarea name="terms" class="form-control form-control-sm" rows="5"
+              ><%= quotation?.terms || 'Prices are subject to change without notice.\nGoods once sold will not be taken back.\nAll disputes subject to Meerut jurisdiction.' %></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="col-12 d-flex gap-2 justify-content-end pb-3">
+        <a href="<%= quotation ? '/spare-quotations/' + quotation.id : '/spare-quotations' %>" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-success px-4" onclick="prepareSubmit()">
+          <i class="bi bi-check-lg me-1"></i><%= quotation ? 'Save Changes' : 'Create Quotation' %>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let items = <%- JSON.stringify(items || []).replace(/</g,'\\u003c') %>;
+let selectedPart = null;
+let searchTimer = null;
+
+// Render existing items on page load
+if (items.length) renderItems();
+
+// ── Machine lookup ─────────────────────────────────────────────────────────────
+async function lookupMachine() {
+  const mno = document.getElementById('machineNoInput').value.trim();
+  if (!mno) return;
+  const msg = document.getElementById('machineMsg');
+  msg.innerHTML = '<span class="text-muted">Looking up…</span>';
+  try {
+    const r = await fetch(`/api/spare/machine-lookup?no=${encodeURIComponent(mno)}`);
+    const m = await r.json();
+    if (m.id) {
+      document.getElementById('customerName').value    = m.customer_name || '';
+      document.getElementById('mobile').value          = m.mobile_1 || '';
+      document.getElementById('customerGstin').value   = m.gst_number || '';
+      document.getElementById('customerAddress').value = m.customer_address || '';
+      document.getElementById('placeOfSupply').value   = m.place_of_supply || '';
+      document.getElementById('contactPerson').value   = m.contact_person || '';
+      msg.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Customer details loaded.</span>';
+    } else {
+      msg.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Machine not found. Fill manually.</span>';
+    }
+  } catch(e) {
+    msg.innerHTML = '<span class="text-danger">Lookup failed.</span>';
+  }
+}
+
+// ── Part search autocomplete ────────────────────────────────────────────────────
+function searchParts(q) {
+  clearTimeout(searchTimer);
+  if (q.length < 2) { hideSuggestions(); return; }
+  searchTimer = setTimeout(async () => {
+    const r = await fetch(`/spare-parts/search?q=${encodeURIComponent(q)}`);
+    const parts = await r.json();
+    showSuggestions(parts);
+  }, 250);
+}
+
+function showSuggestions(parts) {
+  const div = document.getElementById('partSuggestions');
+  if (!parts.length) { div.style.display='none'; return; }
+  div.innerHTML = parts.map(p => `
+    <div class="px-3 py-2 border-bottom suggestion-item" style="cursor:pointer"
+      onmousedown="selectPart(${p.id}, '${(p.sap_part_no||'').replace(/'/g,"\\'")}',
+        '${(p.material_description||'').replace(/'/g,"\\'")}',
+        '${p.hsn_code||''}', ${p.tax_rate||18},
+        ${p.mrp_basic||0}, ${p.ndp_basic||0})">
+      <div class="fw-semibold small">${p.material_description}</div>
+      <div class="text-muted" style="font-size:11px">SAP: ${p.sap_part_no||'—'} | RND: ${p.rnd_part_no||'—'} | MRP: ₹${Number(p.mrp_basic).toFixed(2)} | NDP: ₹${Number(p.ndp_basic).toFixed(2)}</div>
+    </div>
+  `).join('');
+  div.style.display='block';
+}
+
+function hideSuggestions() {
+  document.getElementById('partSuggestions').style.display='none';
+}
+
+function selectPart(id, sap, desc, hsn, tax, mrp, ndp) {
+  selectedPart = { id, sap_part_no: sap, material_description: desc, hsn_code: hsn, tax_rate: tax, mrp_basic: mrp, ndp_basic: ndp };
+  document.getElementById('partSearch').value = desc;
+  document.getElementById('addRate').value = mrp.toFixed(2);
+  document.getElementById('selPartDesc').textContent = desc;
+  document.getElementById('selPartSap').textContent = sap || '—';
+  document.getElementById('selPartMrp').textContent = mrp.toFixed(2);
+  document.getElementById('selPartNdp').textContent = ndp.toFixed(2);
+  document.getElementById('selPartTax').textContent = tax;
+  document.getElementById('selectedPartInfo').classList.remove('d-none');
+  hideSuggestions();
+  document.getElementById('addQty').focus();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#partSearch') && !e.target.closest('#partSuggestions')) hideSuggestions();
+});
+
+// ── Add part to line items ──────────────────────────────────────────────────────
+function addSelectedPart() {
+  if (!selectedPart) { alert('Search and select a part first.'); return; }
+  const qty  = parseFloat(document.getElementById('addQty').value) || 1;
+  const rate = parseFloat(document.getElementById('addRate').value) || 0;
+  const disc = parseFloat(document.getElementById('addDiscount').value) || 0;
+
+  const discAmt  = rate * qty * disc / 100;
+  const lineBas  = rate * qty - discAmt;
+  const taxAmt   = lineBas * (selectedPart.tax_rate || 18) / 100;
+  const lineTotal = lineBas + taxAmt;
+  const netRate  = lineBas / qty;
+
+  items.push({
+    part_no: selectedPart.sap_part_no || '',
+    description: selectedPart.material_description,
+    hsn: selectedPart.hsn_code || '',
+    qty, basic_rate: rate,
+    discount_percent: disc,
+    discount_amount: parseFloat(discAmt.toFixed(2)),
+    tax_rate: selectedPart.tax_rate || 18,
+    tax_amount: parseFloat(taxAmt.toFixed(2)),
+    net_rate: parseFloat(netRate.toFixed(2)),
+    line_basic: parseFloat(lineBas.toFixed(2)),
+    line_total: parseFloat(lineTotal.toFixed(2))
+  });
+
+  // Reset
+  selectedPart = null;
+  document.getElementById('partSearch').value = '';
+  document.getElementById('addQty').value = '1';
+  document.getElementById('addRate').value = '0';
+  document.getElementById('addDiscount').value = '0';
+  document.getElementById('selectedPartInfo').classList.add('d-none');
+
+  renderItems();
+}
+
+// ── Render items table ──────────────────────────────────────────────────────────
+function renderItems() {
+  const tbody = document.getElementById('itemsTbody');
+  document.getElementById('emptyRow')?.remove();
+  document.getElementById('itemCount').textContent = items.length + ' part' + (items.length===1?'':'s');
+
+  tbody.innerHTML = items.map((it, i) => `
+    <tr id="row-${i}">
+      <td class="text-center text-muted small">${i+1}</td>
+      <td class="small font-monospace">${it.part_no||'—'}</td>
+      <td class="small fw-semibold">${it.description}</td>
+      <td class="small">${it.hsn||''}</td>
+      <td><input type="number" class="form-control form-control-sm p-1" style="min-width:60px" value="${it.qty}" min="0.01" step="0.01" onchange="updateRow(${i},'qty',this.value)"></td>
+      <td><input type="number" class="form-control form-control-sm p-1" value="${it.basic_rate}" min="0" step="0.01" onchange="updateRow(${i},'basic_rate',this.value)"></td>
+      <td><input type="number" class="form-control form-control-sm p-1" value="${it.discount_percent}" min="0" max="100" step="0.01" onchange="updateRow(${i},'discount_percent',this.value)"></td>
+      <td class="text-end small">₹${(it.discount_amount||0).toFixed(2)}</td>
+      <td class="text-center small">${it.tax_rate}%</td>
+      <td class="text-end small">₹${(it.tax_amount||0).toFixed(2)}</td>
+      <td class="text-end small">₹${(it.net_rate||0).toFixed(2)}</td>
+      <td class="text-end fw-semibold small">₹${(it.line_total||0).toFixed(2)}</td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
+    </tr>
+  `).join('') || '<tr id="emptyRow"><td colspan="13" class="text-center text-muted py-3">No parts added yet.</td></tr>';
+
+  updateTotals();
+}
+
+function updateRow(i, field, val) {
+  items[i][field] = parseFloat(val) || 0;
+  const it = items[i];
+  const discAmt  = it.basic_rate * it.qty * it.discount_percent / 100;
+  const lineBas  = it.basic_rate * it.qty - discAmt;
+  const taxAmt   = lineBas * it.tax_rate / 100;
+  it.discount_amount = parseFloat(discAmt.toFixed(2));
+  it.tax_amount  = parseFloat(taxAmt.toFixed(2));
+  it.net_rate    = parseFloat((lineBas / it.qty).toFixed(2));
+  it.line_basic  = parseFloat(lineBas.toFixed(2));
+  it.line_total  = parseFloat((lineBas + taxAmt).toFixed(2));
+  renderItems();
+}
+
+function removeItem(i) {
+  items.splice(i, 1);
+  renderItems();
+}
+
+function recalcAll() { updateTotals(); }
+
+function updateTotals() {
+  const taxMode = document.getElementById('taxMode').value;
+  let totBasic = 0, totGst = 0, totGrand = 0;
+  items.forEach(it => {
+    totBasic  += it.line_basic  || 0;
+    totGst    += it.tax_amount  || 0;
+    totGrand  += it.line_total  || 0;
+  });
+  const fmt = n => '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('totBasic').textContent = fmt(totBasic);
+  document.getElementById('totGrand').textContent = fmt(totGrand);
+
+  const isIGST = taxMode === 'IGST';
+  document.getElementById('rowCgst').classList.toggle('d-none', isIGST);
+  document.getElementById('rowSgst').classList.toggle('d-none', isIGST);
+  document.getElementById('rowIgst').classList.toggle('d-none', !isIGST);
+
+  if (isIGST) {
+    document.getElementById('totIgst').textContent = fmt(totGst);
+  } else {
+    document.getElementById('totCgst').textContent = fmt(totGst/2);
+    document.getElementById('totSgst').textContent = fmt(totGst/2);
+  }
+}
+
+function previewAdd() { /* live preview while editing rate/discount */ }
+
+function prepareSubmit() {
+  document.getElementById('itemsJson').value = JSON.stringify(items);
+}
+
+// Also set on form submit
+document.getElementById('qForm').addEventListener('submit', prepareSubmit);
+</script>
+
+<style>
+.suggestion-item:hover { background: #f0f8ff; }
+</style>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

@@ -1,0 +1,172 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'spare-quotations', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-0 fw-bold"><i class="bi bi-receipt-cutoff me-2 text-success"></i><%= q.quotation_no %></h4>
+      <small class="text-muted"><%= new Date(q.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) %></small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <!-- Status badge + change -->
+      <% const sc = {draft:'bg-secondary',sent:'bg-primary',approved:'bg-success',rejected:'bg-danger',converted:'bg-info'}; %>
+      <div class="dropdown">
+        <button class="btn btn-sm dropdown-toggle badge <%= sc[q.status]||'bg-secondary' %> fs-6 border-0" data-bs-toggle="dropdown">
+          <%= q.status.toUpperCase() %>
+        </button>
+        <ul class="dropdown-menu">
+          <% ['draft','sent','approved','rejected','converted'].forEach(s => { %>
+          <li><a class="dropdown-item" href="#" onclick="setStatus('<%= s %>');return false"><%= s.toUpperCase() %></a></li>
+          <% }) %>
+        </ul>
+      </div>
+      <!-- WhatsApp -->
+      <% if (q.mobile) { %>
+      <a href="https://wa.me/91<%= q.mobile.replace(/\D/g,'') %>?text=<%= encodeURIComponent('Dear ' + q.customer_name + ',\nPlease find your spare part quotation ' + q.quotation_no + ' attached. Total: ₹' + q.grand_total.toFixed(2)) %>"
+        target="_blank" class="btn btn-sm btn-success" title="WhatsApp">
+        <i class="bi bi-whatsapp me-1"></i>WhatsApp
+      </a>
+      <% } %>
+      <a href="/spare-quotations/<%= q.id %>/pdf" class="btn btn-sm btn-danger">
+        <i class="bi bi-file-pdf me-1"></i>PDF
+      </a>
+      <a href="/spare-quotations/<%= q.id %>/edit" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-pencil me-1"></i>Edit
+      </a>
+      <form method="post" action="/spare-quotations/<%= q.id %>/clone" style="display:inline">
+        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-copy me-1"></i>Clone</button>
+      </form>
+      <a href="/spare-quotations" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+      </a>
+    </div>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold small">Customer & Machine</div>
+        <div class="card-body small">
+          <dl class="row mb-0">
+            <dt class="col-5 text-muted">Machine No</dt><dd class="col-7 font-monospace fw-semibold"><%= q.machine_no || '—' %></dd>
+            <dt class="col-5 text-muted">Customer</dt><dd class="col-7 fw-semibold"><%= q.customer_name %></dd>
+            <dt class="col-5 text-muted">Contact</dt><dd class="col-7"><%= q.contact_person || '—' %></dd>
+            <dt class="col-5 text-muted">Mobile</dt><dd class="col-7">
+              <% if (q.mobile) { %><a href="tel:<%= q.mobile %>"><%= q.mobile %></a><% } else { %>—<% } %>
+            </dd>
+            <dt class="col-5 text-muted">Address</dt><dd class="col-7"><%= q.customer_address || '—' %></dd>
+            <dt class="col-5 text-muted">GST</dt><dd class="col-7 font-monospace"><%= q.customer_gstin || '—' %></dd>
+            <dt class="col-5 text-muted">Place of Supply</dt><dd class="col-7"><%= q.place_of_supply || '—' %></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold small">Quotation Info</div>
+        <div class="card-body small">
+          <dl class="row mb-0">
+            <dt class="col-5 text-muted">Quotation No</dt><dd class="col-7 fw-bold font-monospace"><%= q.quotation_no %></dd>
+            <dt class="col-5 text-muted">Date</dt><dd class="col-7"><%= new Date(q.created_at).toLocaleDateString('en-IN') %></dd>
+            <dt class="col-5 text-muted">Validity</dt><dd class="col-7"><%= q.validity_days %> days</dd>
+            <dt class="col-5 text-muted">Tax Mode</dt><dd class="col-7"><span class="badge bg-secondary"><%= q.tax_mode %></span></dd>
+            <dt class="col-5 text-muted">Salesperson</dt><dd class="col-7"><%= q.salesperson || '—' %></dd>
+            <dt class="col-5 text-muted">Created By</dt><dd class="col-7"><%= q.creator_name || '—' %></dd>
+            <% if (q.remarks) { %><dt class="col-5 text-muted">Remarks</dt><dd class="col-7"><%= q.remarks %></dd><% } %>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items table -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold small"><%= items.length %> Spare Parts</div>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Part No</th>
+            <th>Description</th>
+            <th>HSN</th>
+            <th class="text-center">Qty</th>
+            <th class="text-end">Basic Rate</th>
+            <th class="text-end">Disc%</th>
+            <th class="text-end">Disc Amt</th>
+            <th class="text-center">Tax%</th>
+            <th class="text-end">Tax Amt</th>
+            <th class="text-end">Net Rate</th>
+            <th class="text-end">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach((it, i) => { %>
+          <tr>
+            <td class="text-muted"><%= i+1 %></td>
+            <td class="font-monospace"><%= it.part_no || '—' %></td>
+            <td class="fw-semibold"><%= it.description %></td>
+            <td><%= it.hsn || '—' %></td>
+            <td class="text-center"><%= it.qty %></td>
+            <td class="text-end">₹<%= formatINR(it.basic_rate) %></td>
+            <td class="text-end"><%= it.discount_percent %>%</td>
+            <td class="text-end">₹<%= formatINR(it.discount_amount) %></td>
+            <td class="text-center"><%= it.tax_rate %>%</td>
+            <td class="text-end">₹<%= formatINR(it.tax_amount) %></td>
+            <td class="text-end">₹<%= formatINR(it.net_rate) %></td>
+            <td class="text-end fw-semibold">₹<%= formatINR(it.line_total) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+        <tfoot class="table-light fw-semibold">
+          <tr>
+            <td colspan="10" class="text-end text-muted">Total Basic:</td>
+            <td colspan="2" class="text-end">₹<%= formatINR(q.total_basic) %></td>
+          </tr>
+          <% if (q.tax_mode === 'IGST') { %>
+          <tr><td colspan="10" class="text-end text-muted">Total IGST:</td><td colspan="2" class="text-end">₹<%= formatINR(q.total_gst) %></td></tr>
+          <% } else { %>
+          <tr><td colspan="10" class="text-end text-muted">Total CGST:</td><td colspan="2" class="text-end">₹<%= formatINR(q.total_gst/2) %></td></tr>
+          <tr><td colspan="10" class="text-end text-muted">Total SGST:</td><td colspan="2" class="text-end">₹<%= formatINR(q.total_gst/2) %></td></tr>
+          <% } %>
+          <tr class="table-success">
+            <td colspan="10" class="text-end fw-bold">Grand Total:</td>
+            <td colspan="2" class="text-end fw-bold fs-6">₹<%= formatINR(q.grand_total) %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <% if (q.terms) { %>
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold small">Terms & Conditions</div>
+    <div class="card-body small text-muted" style="white-space:pre-line"><%= q.terms %></div>
+  </div>
+  <% } %>
+
+  <!-- Delete -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body d-flex justify-content-between align-items-center">
+      <span class="text-muted small">Delete this quotation permanently.</span>
+      <form method="post" action="/spare-quotations/<%= q.id %>/delete" onsubmit="return confirm('Delete quotation <%= q.quotation_no %>?')">
+        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+async function setStatus(status) {
+  const r = await fetch('/spare-quotations/<%= q.id %>/status', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ status })
+  });
+  if ((await r.json()).ok) location.reload();
+}
+</script>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

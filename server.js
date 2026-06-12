@@ -20,8 +20,11 @@ const hrRoutes         = require('./routes/hr');
 const notifyRoutes     = require('./routes/notify');
 const visitsRoutes     = require('./routes/visits');
 const expensesRoutes   = require('./routes/expenses');
-const machinesRoutes   = require('./routes/machines');
-const leadsRoutes      = require('./routes/leads');
+const machinesRoutes        = require('./routes/machines');
+const leadsRoutes           = require('./routes/leads');
+const soldMachinesRoutes    = require('./routes/sold-machines');
+const sparePartsRoutes      = require('./routes/spare-parts');
+const spareQuotationsRoutes = require('./routes/spare-quotations');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -156,12 +159,24 @@ app.get('/', requireLogin, (req, res) => {
       ? db.prepare("SELECT COUNT(*) as c FROM quotations WHERE strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").get().c
       : db.prepare("SELECT COUNT(*) as c FROM quotations WHERE user_id=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").get(uid).c,
     machines: db.prepare('SELECT COUNT(*) as c FROM machines WHERE active=1').get().c,
+    soldMachines: db.prepare('SELECT COUNT(*) as c FROM sold_machines').get().c,
+    spareParts: db.prepare('SELECT COUNT(*) as c FROM spare_parts').get().c,
+    spareQuotations: isAdmin
+      ? db.prepare('SELECT COUNT(*) as c FROM spare_quotations').get().c
+      : db.prepare('SELECT COUNT(*) as c FROM spare_quotations WHERE created_by=?').get(uid).c,
+    spareToday: isAdmin
+      ? db.prepare("SELECT COUNT(*) as c FROM spare_quotations WHERE date(created_at)=date('now')").get().c
+      : db.prepare("SELECT COUNT(*) as c FROM spare_quotations WHERE created_by=? AND date(created_at)=date('now')").get(uid).c,
   };
   const recentSql = `SELECT q.*, c.name as customer_name, m.display_name as machine_name
     FROM quotations q JOIN customers c ON c.id=q.customer_id JOIN machines m ON m.id=q.machine_id
     ${isAdmin ? '' : 'WHERE q.user_id=?'} ORDER BY q.created_at DESC LIMIT 8`;
   const recent = isAdmin ? db.prepare(recentSql).all() : db.prepare(recentSql).all(uid);
-  res.render('dashboard', { title: 'Dashboard', stats, recent, formatINR });
+  const recentSpare = db.prepare(`SELECT sq.*, u.full_name as creator_name
+    FROM spare_quotations sq LEFT JOIN users u ON u.id=sq.created_by
+    ${isAdmin ? '' : 'WHERE sq.created_by=?'} ORDER BY sq.created_at DESC LIMIT 5`
+  ).all(...(isAdmin ? [] : [uid]));
+  res.render('dashboard', { title: 'Dashboard', stats, recent, recentSpare, formatINR });
 });
 
 // ── My Profile (self-service) ─────────────────────────────────────────────────
@@ -496,6 +511,13 @@ app.get('/api/machines/:id', requireLogin, (req, res) => {
   res.json(m || {});
 });
 
+// ── Spare parts machine lookup ─────────────────────────────────────────────────
+app.get('/api/spare/machine-lookup', requireLogin, (req, res) => {
+  const no = req.query.no || '';
+  const m = db.prepare('SELECT * FROM sold_machines WHERE machine_no = ?').get(no.trim());
+  res.json(m || {});
+});
+
 app.get('/api/customers/search', requireLogin, (req, res) => {
   const q = req.query.q || '';
   const rows = db.prepare("SELECT id, name, phone, gstin FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT 10").all(`%${q}%`, `%${q}%`);
@@ -559,8 +581,11 @@ app.use('/notifications', requireLogin, notifyRoutes);
 app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
 app.use('/visits',        requireLogin, visitsRoutes);
 app.use('/expenses',      requireLogin, expensesRoutes);
-app.use('/machines',      requireLogin, requireManagerOrAdmin, machinesRoutes);
-app.use('/leads',         requireLogin, leadsRoutes);
+app.use('/machines',          requireLogin, requireManagerOrAdmin, machinesRoutes);
+app.use('/leads',             requireLogin, leadsRoutes);
+app.use('/sold-machines',     requireLogin, soldMachinesRoutes);
+app.use('/spare-parts',       requireLogin, sparePartsRoutes);
+app.use('/spare-quotations',  requireLogin, spareQuotationsRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {

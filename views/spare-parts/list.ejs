@@ -1,0 +1,240 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'spare-parts', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-0 fw-bold"><i class="bi bi-box-seam me-2 text-warning"></i>Spare Parts Master</h4>
+      <small class="text-muted"><%= total %> parts in catalog</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/spare-parts/export/sample" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>Sample Excel</a>
+      <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('importModal').style.display='flex'">
+        <i class="bi bi-upload me-1"></i>Import Excel
+      </button>
+      <button class="btn btn-warning text-dark btn-sm" onclick="document.getElementById('addPartModal').style.display='flex'">
+        <i class="bi bi-plus-lg me-1"></i>Add Part
+      </button>
+    </div>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error) { %><div class="alert alert-danger alert-dismissible"><%= flash.error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="d-flex gap-2">
+        <input name="q" value="<%= q %>" class="form-control" placeholder="Search by SAP No, RND No, Description…" style="max-width:400px">
+        <button class="btn btn-outline-secondary">Search</button>
+        <% if (q) { %><a href="/spare-parts" class="btn btn-outline-secondary">Clear</a><% } %>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle small">
+        <thead class="table-light">
+          <tr>
+            <th>SAP Part No.</th>
+            <th>RND Part No.</th>
+            <th>Description</th>
+            <th>HSN</th>
+            <th class="text-end">NDP (Basic)</th>
+            <th class="text-end">MRP (Basic)</th>
+            <th class="text-end">MRP (With Tax)</th>
+            <th class="text-center">Tax %</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (parts.length === 0) { %>
+          <tr><td colspan="9" class="text-center text-muted py-4">
+            No parts found. <button class="btn btn-sm btn-warning" onclick="document.getElementById('importModal').style.display='flex'">Import from Excel</button>
+          </td></tr>
+          <% } %>
+          <% parts.forEach(p => { %>
+          <tr>
+            <td><code class="text-dark"><%= p.sap_part_no || '—' %></code></td>
+            <td><code class="text-secondary"><%= p.rnd_part_no || '—' %></code></td>
+            <td class="fw-semibold" style="max-width:250px"><%= p.material_description %></td>
+            <td><%= p.hsn_code || '—' %></td>
+            <td class="text-end">₹<%= Number(p.ndp_basic).toFixed(2) %></td>
+            <td class="text-end">₹<%= Number(p.mrp_basic).toFixed(2) %></td>
+            <td class="text-end fw-semibold">₹<%= Number(p.mrp_price).toFixed(2) %></td>
+            <td class="text-center"><%= p.tax_rate %>%</td>
+            <td>
+              <button class="btn btn-sm btn-outline-secondary" onclick="openEdit(<%= JSON.stringify(p).replace(/'/g,"&#39;") %>)" title="Edit"><i class="bi bi-pencil"></i></button>
+              <form method="post" action="/spare-parts/<%= p.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this part?')">
+                <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% if (q && parts.length === 200) { %>
+    <div class="card-footer text-muted small">Showing first 200 results. Refine your search.</div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Add Part Modal -->
+<div id="addPartModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;overflow-y:auto">
+  <div class="card border-0 shadow-lg my-3" style="width:640px;max-width:95vw">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold" id="modalTitle">Add New Part</span>
+      <button class="btn btn-sm btn-outline-secondary" onclick="closeModals()">✕</button>
+    </div>
+    <form method="post" id="partForm" action="/spare-parts">
+      <input type="hidden" name="_method" id="partMethod">
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">SAP Part No.</label>
+            <input name="sap_part_no" id="f_sap" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">RND Part No.</label>
+            <input name="rnd_part_no" id="f_rnd" class="form-control form-control-sm">
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Material Description <span class="text-danger">*</span></label>
+            <input name="material_description" id="f_desc" class="form-control form-control-sm" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">HSN Code</label>
+            <input name="hsn_code" id="f_hsn" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">Tax Rate %</label>
+            <select name="tax_rate" id="f_tax" class="form-select form-select-sm">
+              <option value="5">5%</option>
+              <option value="12">12%</option>
+              <option value="18" selected>18%</option>
+              <option value="28">28%</option>
+            </select>
+          </div>
+          <div class="col-12"><hr class="my-1"></div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">NDP Basic</label>
+            <input name="ndp_basic" id="f_ndp_basic" type="number" step="0.01" class="form-control form-control-sm" value="0" oninput="calcModal()">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">NDP GST Amt</label>
+            <input name="ndp_gst" id="f_ndp_gst" type="number" step="0.01" class="form-control form-control-sm" value="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">NDP (Total)</label>
+            <input name="ndp_price" id="f_ndp" type="number" step="0.01" class="form-control form-control-sm" value="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">MRP Basic</label>
+            <input name="mrp_basic" id="f_mrp_basic" type="number" step="0.01" class="form-control form-control-sm" value="0" oninput="calcModal()">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">MRP GST Amt</label>
+            <input name="mrp_gst" id="f_mrp_gst" type="number" step="0.01" class="form-control form-control-sm" value="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small fw-semibold">MRP (Total)</label>
+            <input name="mrp_price" id="f_mrp" type="number" step="0.01" class="form-control form-control-sm" value="0">
+          </div>
+        </div>
+      </div>
+      <div class="card-footer d-flex gap-2 justify-content-end">
+        <button type="button" class="btn btn-outline-secondary" onclick="closeModals()">Cancel</button>
+        <button type="submit" class="btn btn-warning text-dark">Save Part</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Import Modal -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div class="card border-0 shadow-lg" style="width:520px;max-width:95vw">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Import Spare Parts from Excel</span>
+      <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('importModal').style.display='none'">✕</button>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted">Excel columns: <code>SAP Part No., RND Part No., Material Description, HSN CODE, TAX_RATE, NDP Basic, NDP, MRP Basic, MRP</code></p>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Import Mode</label>
+        <select id="importMode" class="form-select form-select-sm">
+          <option value="insert">Insert New Only (skip duplicates)</option>
+          <option value="upsert">Insert + Update Existing (by SAP Part No)</option>
+        </select>
+      </div>
+      <input type="file" id="importFile" accept=".xlsx,.xls" class="form-control mb-2">
+      <div id="importProgress" class="progress d-none mb-2" style="height:6px"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div></div>
+      <div id="importResult" class="d-none"></div>
+    </div>
+    <div class="card-footer d-flex gap-2 justify-content-end">
+      <button class="btn btn-outline-secondary" onclick="document.getElementById('importModal').style.display='none'">Cancel</button>
+      <button class="btn btn-success" onclick="doImportParts()"><i class="bi bi-upload me-1"></i>Import</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function closeModals() {
+  document.getElementById('addPartModal').style.display = 'none';
+}
+function calcModal() {
+  const tax = parseFloat(document.getElementById('f_tax').value) / 100;
+  const ndpB = parseFloat(document.getElementById('f_ndp_basic').value) || 0;
+  const mrpB = parseFloat(document.getElementById('f_mrp_basic').value) || 0;
+  document.getElementById('f_ndp_gst').value = (ndpB * tax).toFixed(2);
+  document.getElementById('f_ndp').value = (ndpB * (1 + tax)).toFixed(2);
+  document.getElementById('f_mrp_gst').value = (mrpB * tax).toFixed(2);
+  document.getElementById('f_mrp').value = (mrpB * (1 + tax)).toFixed(2);
+}
+function openEdit(p) {
+  document.getElementById('modalTitle').textContent = 'Edit Part';
+  document.getElementById('partForm').action = `/spare-parts/${p.id}/update`;
+  document.getElementById('f_sap').value = p.sap_part_no || '';
+  document.getElementById('f_rnd').value = p.rnd_part_no || '';
+  document.getElementById('f_desc').value = p.material_description || '';
+  document.getElementById('f_hsn').value = p.hsn_code || '';
+  document.getElementById('f_tax').value = p.tax_rate || 18;
+  document.getElementById('f_ndp_basic').value = p.ndp_basic || 0;
+  document.getElementById('f_ndp_gst').value = p.ndp_gst || 0;
+  document.getElementById('f_ndp').value = p.ndp_price || 0;
+  document.getElementById('f_mrp_basic').value = p.mrp_basic || 0;
+  document.getElementById('f_mrp_gst').value = p.mrp_gst || 0;
+  document.getElementById('f_mrp').value = p.mrp_price || 0;
+  document.getElementById('addPartModal').style.display = 'flex';
+}
+async function doImportParts() {
+  const file = document.getElementById('importFile').files[0];
+  const mode = document.getElementById('importMode').value;
+  if (!file) return alert('Select a file first.');
+  document.getElementById('importProgress').classList.remove('d-none');
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+    const r = await fetch('/spare-parts/import/excel', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ data: base64, mode })
+    });
+    const j = await r.json();
+    document.getElementById('importProgress').classList.add('d-none');
+    const div = document.getElementById('importResult');
+    div.classList.remove('d-none','alert-success','alert-danger');
+    div.className = 'alert ' + (j.ok ? 'alert-success' : 'alert-danger');
+    if (j.ok) {
+      div.innerHTML = `✓ Inserted: <strong>${j.inserted}</strong>, Updated: <strong>${j.updated||0}</strong>, Skipped: <strong>${j.skipped}</strong>` +
+        (j.errors?.length ? `<br><small>Errors: ${j.errors.slice(0,3).join('; ')}</small>` : '');
+      setTimeout(() => location.reload(), 2500);
+    } else {
+      div.textContent = '✗ ' + j.error;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+</script>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

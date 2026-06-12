@@ -49,6 +49,31 @@
       </a>
     </li>
 
+    <!-- Spare Parts Section -->
+    <li class="nav-item mt-2">
+      <div class="text-white-50 px-2 py-1" style="font-size:10px;text-transform:uppercase;letter-spacing:1px">Spare Parts</div>
+    </li>
+    <li class="nav-item">
+      <a href="/sold-machines" class="nav-link text-white <%= active==='sold-machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-hdd-rack me-2"></i>Sold Machines
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/spare-quotations" class="nav-link text-white <%= active==='spare-quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-receipt-cutoff me-2"></i>Spare Quotations
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/spare-parts" class="nav-link text-white <%= active==='spare-parts'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-box-seam me-2"></i>Parts Master
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/spare-quotations/reports/summary" class="nav-link text-white <%= active==='spare-reports'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-bar-chart me-2"></i>Parts Reports
+      </a>
+    </li>
+
     <!-- Sales / Quotations (permission-gated) -->
     <% if (hasPerm('quotations')) { %>
     <li class="nav-item">
