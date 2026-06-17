@@ -365,24 +365,37 @@ db.prepare("UPDATE leave_types SET is_active=0 WHERE code IN ('EL','HD')").run()
 // Seed default role permissions
 const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role, permission) VALUES (?,?)');
 const defaultPerms = [
+  // ── admin gets '*' dynamically in getUserPermissions, no rows needed ──
+
   // manager
   ['manager','attendance'],['manager','hr_admin'],['manager','leave_approval'],
   ['manager','attendance_admin'],['manager','quotations'],['manager','customers'],
-  ['manager','salary_admin'],['manager','reports'],
-  // sales
-  ['sales','attendance'],['sales','field_visit'],['sales','route_map'],
-  ['sales','expense_claim'],['sales','quotations'],['sales','customers'],
+  ['manager','salary_admin'],['manager','reports'],['manager','leads'],
+  ['manager','spare_quotations'],['manager','sold_machines'],['manager','spare_parts'],['manager','spare_reports'],
+  ['manager','salespersons_admin'],
+
+  // sales — machine quotations, leads, visits, HR self-service
+  ['sales','quotations'],['sales','leads'],['sales','field_visit'],['sales','route_map'],
+  ['sales','attendance'],['sales','expense_claim'],['sales','customers'],
+
+  // office — machine + spare quotations, sold machines, parts, leads, HR self-service
+  ['office','quotations'],['office','spare_quotations'],['office','sold_machines'],
+  ['office','spare_parts'],['office','spare_reports'],
+  ['office','leads'],['office','attendance'],['office','expense_claim'],['office','customers'],
+
   // service
   ['service','attendance'],['service','field_visit'],['service','route_map'],['service','expense_claim'],
+
   // hr
   ['hr','attendance'],['hr','hr_admin'],['hr','leave_approval'],['hr','attendance_admin'],['hr','reports'],
-  // office
-  ['office','attendance'],['office','quotations'],['office','customers'],
-  // staff (backward compat = sales)
-  ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],
-  // employee (basic)
+
+  // staff (legacy alias for sales)
+  ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],['staff','leads'],
+
+  // employee (attendance only)
   ['employee','attendance'],
 ];
+
 defaultPerms.forEach(([r,p]) => insertPerm.run(r,p));
 
 // Seed admin user

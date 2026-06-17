@@ -78,12 +78,14 @@
         <i class="bi bi-file-earmark-text-fill"></i>Machine Quotations
       </a>
       <% } %>
+      <% if (isAdmin || isMgr) { %>
       <a href="/salespersons" class="sb-link nav-link <%= active==='salespersons'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-person-badge-fill"></i>Salespersons
       </a>
       <a href="/salespersons/reports/summary" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
         <i class="bi bi-bar-chart-fill"></i>Sales Reports
       </a>
+      <% } %>
       <% if (isMgr) { %>
       <a href="/machines" class="sb-link nav-link <%= active==='machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-sliders2"></i>Machine Master
@@ -102,18 +104,26 @@
       <i class="bi bi-box-seam-fill"></i>SPARES
     </div>
     <div class="sb-section-body<%= sparesActive?' show':'' %>" id="section-spares">
+      <% if (isAdmin || hasPerm('sold_machines')) { %>
       <a href="/sold-machines" class="sb-link nav-link <%= active==='sold-machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-hdd-rack-fill"></i>Sold Machines
       </a>
+      <% } %>
+      <% if (isAdmin || hasPerm('spare_quotations')) { %>
       <a href="/spare-quotations" class="sb-link nav-link <%= active==='spare-quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-receipt-cutoff"></i>Spare Quotations
       </a>
+      <% } %>
+      <% if (isAdmin || hasPerm('spare_parts')) { %>
       <a href="/spare-parts" class="sb-link nav-link <%= active==='spare-parts'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-boxes"></i>Parts Master
       </a>
+      <% } %>
+      <% if (isAdmin || hasPerm('spare_reports')) { %>
       <a href="/spare-quotations/reports/summary" class="sb-link nav-link <%= active==='spare-reports'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-bar-chart-line-fill"></i>Parts Reports
       </a>
+      <% } %>
     </div>
 
     <!-- ── HR ────────────────────────────────────── -->
@@ -191,7 +201,7 @@
       <span class="fw-semibold text-truncate d-block" style="max-width:140px;font-size:13px">
         <%= user ? user.full_name || user.username : '' %>
       </span>
-      <% const roleBadge = {admin:'bg-danger',manager:'bg-warning text-dark',sales:'bg-info text-dark',staff:'bg-primary',employee:'bg-success'}; %>
+      <% const roleBadge = {admin:'bg-danger',manager:'bg-warning text-dark',sales:'bg-info text-dark',office:'bg-primary',hr:'bg-purple',service:'bg-secondary',staff:'bg-secondary',employee:'bg-success'}; %>
       <span class="badge <%= roleBadge[user?.role] || 'bg-secondary' %>" style="font-size:9px"><%= (user?.role||'').toUpperCase() %></span>
     </div>
     <a href="/logout" class="btn btn-sm btn-outline-light flex-shrink-0" title="Logout">

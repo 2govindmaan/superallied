@@ -27,11 +27,9 @@
             <td class="fw-semibold font-monospace"><%= u.username %></td>
             <td><%= u.full_name || '—' %></td>
             <td>
-              <% if (u.role === 'admin') { %>
-                <span class="badge bg-danger">Admin</span>
-              <% } else { %>
-                <span class="badge bg-primary">Sales Staff</span>
-              <% } %>
+              <% const rb = {admin:'bg-danger',manager:'bg-warning text-dark',sales:'bg-info text-dark',office:'bg-primary',hr:'bg-purple',service:'bg-secondary',staff:'bg-secondary',employee:'bg-success'}; %>
+              <% const rl = {admin:'Admin',manager:'Manager',sales:'Sales',office:'Office',hr:'HR',service:'Service',staff:'Staff',employee:'Employee'}; %>
+              <span class="badge <%= rb[u.role]||'bg-secondary' %>"><%= rl[u.role]||u.role %></span>
             </td>
             <td class="text-muted small"><%= new Date(u.created_at).toLocaleDateString('en-IN') %></td>
             <td class="text-end">
@@ -54,11 +52,20 @@
     </div>
   </div>
 
-  <div class="alert alert-info mt-4 small">
-    <i class="bi bi-info-circle me-1"></i>
-    <strong>Staff accounts</strong> can create quotations and manage customers.
-    They cannot view dealer prices, edit the machine catalog, or access the Profit Calculator.
-    Their quotations are priced at <strong>standard markup</strong> automatically.
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white fw-semibold small">Role Access Summary</div>
+    <div class="card-body small">
+      <table class="table table-sm table-bordered mb-0" style="font-size:12px">
+        <thead class="table-light"><tr><th>Role</th><th>Access</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge bg-danger">Admin</span></td><td>Full access — all modules, approvals, settings, user management</td></tr>
+          <tr><td><span class="badge bg-info text-dark">Sales</span></td><td>Machine Quotations, Lead Management, Field Visits, Attendance, Leaves, Salary, Expenses, ID Card</td></tr>
+          <tr><td><span class="badge bg-primary">Office</span></td><td>Machine + Spare Quotations, Sold Machines, Parts Master, Parts Reports, Lead Management, Attendance, Leaves, Salary, Expenses, ID Card</td></tr>
+          <tr><td><span class="badge bg-warning text-dark">Manager</span></td><td>All Sales + Spares access, HR dashboard, attendance/leave/salary admin</td></tr>
+          <tr><td><span class="badge bg-secondary">HR</span></td><td>HR Dashboard, employee management, attendance, leave approvals</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

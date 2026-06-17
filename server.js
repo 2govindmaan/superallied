@@ -506,8 +506,10 @@ app.post('/users', requireLogin, requireAdmin, (req, res) => {
     return res.redirect('/users/new');
   }
   const hash = bcrypt.hashSync(password, 10);
+  const allowedRoles = ['admin','sales','office','manager','hr','service','staff','employee'];
+  const safeRole = allowedRoles.includes(role) ? role : 'sales';
   db.prepare('INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)')
-    .run(username.trim(), hash, full_name?.trim() || '', role === 'admin' ? 'admin' : 'staff');
+    .run(username.trim(), hash, full_name?.trim() || '', safeRole);
   req.session.flash = { success: `User "${username.trim()}" created successfully.` };
   res.redirect('/users');
 });
@@ -601,10 +603,10 @@ app.use('/visits',        requireLogin, visitsRoutes);
 app.use('/expenses',      requireLogin, expensesRoutes);
 app.use('/machines',          requireLogin, requireManagerOrAdmin, machinesRoutes);
 app.use('/leads',             requireLogin, leadsRoutes);
-app.use('/sold-machines',     requireLogin, soldMachinesRoutes);
-app.use('/spare-parts',       requireLogin, sparePartsRoutes);
-app.use('/spare-quotations',  requireLogin, spareQuotationsRoutes);
-app.use('/salespersons',       requireLogin, salespersonsRoutes);
+app.use('/sold-machines',     requireLogin, requirePerm('sold_machines'),    soldMachinesRoutes);
+app.use('/spare-parts',       requireLogin, requirePerm('spare_parts'),       sparePartsRoutes);
+app.use('/spare-quotations',  requireLogin, requirePerm('spare_quotations'),  spareQuotationsRoutes);
+app.use('/salespersons',      requireLogin, requirePerm('salespersons_admin'), salespersonsRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {
