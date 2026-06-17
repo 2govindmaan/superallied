@@ -89,6 +89,8 @@ router.post('/import/excel', (req, res) => {
 
     let inserted = 0, updated = 0, skipped = 0, errors = [];
 
+    db.exec('BEGIN TRANSACTION');
+    try {
     for (const row of rows) {
       const desc = String(row['Material Description'] || row['material_description'] || '').trim();
       const sap  = String(row['SAP Part No.'] || row['SAP Part no.'] || row['sap_part_no'] || '').trim();
@@ -132,6 +134,8 @@ router.post('/import/excel', (req, res) => {
         }
       } catch(e) { errors.push(`${sap||desc}: ${e.message}`); skipped++; }
     }
+    db.exec('COMMIT');
+    } catch(txErr) { db.exec('ROLLBACK'); throw txErr; }
     auditLog(req.session?.userId, 'PARTS_IMPORT', 'spare_parts', '', `inserted=${inserted} updated=${updated}`);
     res.json({ ok: true, inserted, updated, skipped, errors });
   } catch(e) {

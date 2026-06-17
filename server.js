@@ -46,7 +46,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: '5mb' }));  // increased for base64 photo uploads
+app.use(express.json({ limit: '20mb' }));  // 20mb covers large Excel imports (~1MB file = ~1.4MB base64)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'superallied-secret-2026',
   resave: false,

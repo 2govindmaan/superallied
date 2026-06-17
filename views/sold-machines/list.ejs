@@ -100,12 +100,22 @@
 </div>
 
 <script>
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 async function doImportMachines() {
   const file = document.getElementById('importFile').files[0];
   if (!file) return alert('Select a file first.');
   const reader = new FileReader();
   reader.onload = async e => {
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
+    const base64 = arrayBufferToBase64(e.target.result);
     const r = await fetch('/sold-machines/import/excel', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ data: base64 })

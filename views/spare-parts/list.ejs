@@ -206,31 +206,54 @@ function openEdit(p) {
   document.getElementById('f_mrp').value = p.mrp_price || 0;
   document.getElementById('addPartModal').style.display = 'flex';
 }
+function arrayBufferToBase64(buffer) {
+  // Chunked conversion — avoids call stack overflow on large files
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
 async function doImportParts() {
   const file = document.getElementById('importFile').files[0];
   const mode = document.getElementById('importMode').value;
   if (!file) return alert('Select a file first.');
+  const div = document.getElementById('importResult');
+  div.className = 'alert alert-info';
+  div.classList.remove('d-none');
+  div.textContent = `Reading file (${(file.size/1024).toFixed(0)} KB)…`;
   document.getElementById('importProgress').classList.remove('d-none');
+
   const reader = new FileReader();
   reader.onload = async e => {
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(e.target.result)));
-    const r = await fetch('/spare-parts/import/excel', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ data: base64, mode })
-    });
-    const j = await r.json();
-    document.getElementById('importProgress').classList.add('d-none');
-    const div = document.getElementById('importResult');
-    div.classList.remove('d-none','alert-success','alert-danger');
-    div.className = 'alert ' + (j.ok ? 'alert-success' : 'alert-danger');
-    if (j.ok) {
-      div.innerHTML = `✓ Inserted: <strong>${j.inserted}</strong>, Updated: <strong>${j.updated||0}</strong>, Skipped: <strong>${j.skipped}</strong>` +
-        (j.errors?.length ? `<br><small>Errors: ${j.errors.slice(0,3).join('; ')}</small>` : '');
-      setTimeout(() => location.reload(), 2500);
-    } else {
-      div.textContent = '✗ ' + j.error;
+    try {
+      div.textContent = 'Uploading to server…';
+      const base64 = arrayBufferToBase64(e.target.result);
+      const r = await fetch('/spare-parts/import/excel', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ data: base64, mode })
+      });
+      const j = await r.json();
+      document.getElementById('importProgress').classList.add('d-none');
+      div.classList.remove('alert-info','alert-success','alert-danger');
+      div.className = 'alert ' + (j.ok ? 'alert-success' : 'alert-danger');
+      if (j.ok) {
+        div.innerHTML = `✓ Inserted: <strong>${j.inserted}</strong>, Updated: <strong>${j.updated||0}</strong>, Skipped: <strong>${j.skipped}</strong>` +
+          (j.errors?.length ? `<br><small>Errors: ${j.errors.slice(0,3).join('; ')}</small>` : '');
+        setTimeout(() => location.reload(), 2500);
+      } else {
+        div.textContent = '✗ ' + j.error;
+      }
+    } catch(err) {
+      document.getElementById('importProgress').classList.add('d-none');
+      div.className = 'alert alert-danger';
+      div.textContent = '✗ ' + err.message;
     }
   };
+  reader.onerror = () => { div.textContent = '✗ Could not read file.'; };
   reader.readAsArrayBuffer(file);
 }
 </script>
