@@ -289,8 +289,8 @@ app.post('/quotations', requireLogin, (req, res) => {
   db.prepare(`INSERT INTO quotations
     (quotation_number,financial_year,serial_number,customer_id,machine_id,user_id,
      quantity,basic_price,transit_insurance,tax_mode,cgst_rate,sgst_rate,igst_rate,
-     has_tcs,tcs_rate,insurance,trc,hp_with,notes,salesperson_name,salesperson_phone)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+     has_tcs,tcs_rate,insurance,trc,hp_with,notes,salesperson_name,salesperson_phone,tyre_option)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(
       quotationNumber, financialYear, serialNumber,
       +customer_id, +machine_id, req.session.userId,
@@ -299,7 +299,8 @@ app.post('/quotations', requireLogin, (req, res) => {
       has_tcs === 'on' ? 1 : 0, +tcs_rate||1,
       insurance||'INCLUSIVE', trc||'INCLUSIVE',
       hp_with||'', notes||'',
-      salesperson_name||'', salesperson_phone||''
+      salesperson_name||'', salesperson_phone||'',
+      req.body.tyre_option||'IT'
     );
   req.session.flash = { success: `Quotation ${quotationNumber} created.` };
   res.redirect('/quotations');
@@ -341,13 +342,13 @@ app.post('/quotations/:id', requireLogin, (req, res) => {
     customer_id, machine_id, quantity, basic_price, transit_insurance,
     tax_mode, cgst_rate, sgst_rate, igst_rate,
     has_tcs, tcs_rate, insurance, trc, hp_with, notes, status,
-    salesperson_name, salesperson_phone,
+    salesperson_name, salesperson_phone, tyre_option,
   } = req.body;
   db.prepare(`UPDATE quotations SET
     customer_id=?,machine_id=?,quantity=?,basic_price=?,transit_insurance=?,
     tax_mode=?,cgst_rate=?,sgst_rate=?,igst_rate=?,has_tcs=?,tcs_rate=?,
     insurance=?,trc=?,hp_with=?,notes=?,status=?,
-    salesperson_name=?,salesperson_phone=?
+    salesperson_name=?,salesperson_phone=?,tyre_option=?
     WHERE id=?`)
     .run(
       +customer_id, +machine_id, +quantity||1, +basic_price, +transit_insurance||2000,
@@ -356,6 +357,7 @@ app.post('/quotations/:id', requireLogin, (req, res) => {
       insurance||'INCLUSIVE', trc||'INCLUSIVE',
       hp_with||'', notes||'', status||'draft',
       salesperson_name||'', salesperson_phone||'',
+      tyre_option||'IT',
       req.params.id
     );
   req.session.flash = { success: 'Quotation updated.' };
