@@ -445,8 +445,15 @@ app.get('/settings', requireLogin, (req, res) => {
 });
 
 app.post('/settings', requireLogin, (req, res) => {
-  const fields = ['company_name','company_gstin','company_address','dealer_of',
-                  'contact_name','contact_phone','bank_beneficiary','bank_account','bank_ifsc','bank_branch'];
+  const fields = [
+    'company_name','company_gstin','company_address','dealer_of',
+    'contact_name','contact_phone','company_phone_sales','company_phone_service',
+    'company_email','company_udyam','company_state','company_state_code',
+    'bank_beneficiary','bank_account','bank_ifsc','bank_branch',
+    'salesperson_name','salesperson_phone',
+    'rto_default_rate','price_lock_enabled','roundoff_enabled','roundoff_amount',
+    'company_upi'
+  ];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)');
   fields.forEach(k => { if (req.body[k] != null) upsert.run(k, req.body[k]); });
   req.session.flash = { success: 'Settings saved.' };

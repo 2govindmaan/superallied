@@ -77,6 +77,33 @@ router.post('/:id/delete', (req, res) => {
   res.redirect('/spare-parts');
 });
 
+// ── Admin: delete all ─────────────────────────────────────────────────────────
+router.post('/delete-all', (req, res) => {
+  if (res.locals.user?.role !== 'admin') return res.status(403).json({ ok: false, error: 'Admin only.' });
+  const count = db.prepare('SELECT COUNT(*) as c FROM spare_parts').get().c;
+  db.prepare('DELETE FROM spare_parts').run();
+  auditLog(req.session?.userId, 'PARTS_DELETE_ALL', 'spare_parts', '', `deleted=${count}`);
+  req.session.flash = { success: `All ${count} parts deleted.` };
+  res.redirect('/spare-parts');
+});
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+router.get('/export/csv', (req, res) => {
+  const parts = db.prepare('SELECT sap_part_no,rnd_part_no,material_description,hsn_code,tax_rate,ndp_basic,ndp_gst,ndp_price,mrp_basic,mrp_gst,mrp_price FROM spare_parts ORDER BY material_description').all();
+  const header = 'SAP Part No.,RND Part No.,Material Description,HSN Code,Tax Rate,NDP Basic,NDP GST,NDP Price,MRP Basic,MRP GST,MRP Price';
+  const esc = v => '"' + String(v||'').replace(/"/g, '""') + '"';
+  const rows = parts.map(p => [
+    esc(p.sap_part_no), esc(p.rnd_part_no), esc(p.material_description),
+    esc(p.hsn_code), p.tax_rate,
+    p.ndp_basic, p.ndp_gst, p.ndp_price,
+    p.mrp_basic, p.mrp_gst, p.mrp_price
+  ].join(','));
+  const csv = [header, ...rows].join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="spare-parts.csv"');
+  res.send(csv);
+});
+
 // ── Excel import ──────────────────────────────────────────────────────────────
 router.post('/import/excel', (req, res) => {
   try {
@@ -113,14 +140,14 @@ router.post('/import/excel', (req, res) => {
             db.prepare(`UPDATE spare_parts SET rnd_part_no=?,material_description=?,hsn_code=?,
               tax_rate=?,ndp_basic=?,ndp_gst=?,ndp_price=?,mrp_basic=?,mrp_gst=?,mrp_price=?,
               updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-              .run(row['RND Part No.']||'', desc, row['HSN CODE']||'',
+              .run((row['RND Part No.']||row['RND Part no.']||'')||'', desc, row['HSN CODE']||'',
                    taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice, existing.id);
             updated++;
           } else {
             db.prepare(`INSERT INTO spare_parts (sap_part_no,rnd_part_no,material_description,
               hsn_code,tax_rate,ndp_basic,ndp_gst,ndp_price,mrp_basic,mrp_gst,mrp_price)
               VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-              .run(sap, row['RND Part No.']||'', desc, row['HSN CODE']||'',
+              .run(sap, (row['RND Part No.']||row['RND Part no.']||'')||'', desc, row['HSN CODE']||'',
                    taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice);
             inserted++;
           }
@@ -128,7 +155,7 @@ router.post('/import/excel', (req, res) => {
           db.prepare(`INSERT INTO spare_parts (sap_part_no,rnd_part_no,material_description,
             hsn_code,tax_rate,ndp_basic,ndp_gst,ndp_price,mrp_basic,mrp_gst,mrp_price)
             VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-            .run(sap, row['RND Part No.']||'', desc, row['HSN CODE']||'',
+            .run(sap, (row['RND Part No.']||row['RND Part no.']||'')||'', desc, row['HSN CODE']||'',
                  taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice);
           inserted++;
         }

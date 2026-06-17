@@ -8,9 +8,16 @@
     </div>
     <div class="d-flex gap-2">
       <a href="/spare-parts/export/sample" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>Sample Excel</a>
+      <a href="/spare-parts/export/csv" class="btn btn-outline-info btn-sm"><i class="bi bi-filetype-csv me-1"></i>Export CSV</a>
       <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('importModal').style.display='flex'">
         <i class="bi bi-upload me-1"></i>Import Excel
       </button>
+      <% if (user && user.role === 'admin') { %>
+      <form method="POST" action="/spare-parts/delete-all" class="d-inline"
+        onsubmit="return confirm('DELETE ALL <%= total %> PARTS? This cannot be undone.')">
+        <button class="btn btn-danger btn-sm"><i class="bi bi-trash3-fill me-1"></i>Delete All</button>
+      </form>
+      <% } %>
       <button class="btn btn-warning text-dark btn-sm" onclick="document.getElementById('addPartModal').style.display='flex'">
         <i class="bi bi-plus-lg me-1"></i>Add Part
       </button>

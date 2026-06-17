@@ -1,5 +1,6 @@
 <%- include('../partials/head', { title }) %>
 <%- include('../partials/sidebar', { active: 'spare-quotations', user }) %>
+<% const isAdm = isAdmin || (user && user.userRole === 'admin'); %>
 <div class="main-content">
   <div class="page-header d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -8,25 +9,39 @@
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <!-- Status badge + change -->
-      <% const sc = {draft:'bg-secondary',sent:'bg-primary',approved:'bg-success',rejected:'bg-danger',converted:'bg-info'}; %>
+      <% const sc = {draft:'bg-secondary',sent:'bg-primary',confirmed:'bg-success',cancelled:'bg-danger'}; %>
       <div class="dropdown">
         <button class="btn btn-sm dropdown-toggle badge <%= sc[q.status]||'bg-secondary' %> fs-6 border-0" data-bs-toggle="dropdown">
           <%= q.status.toUpperCase() %>
         </button>
         <ul class="dropdown-menu">
-          <% ['draft','sent','approved','rejected','converted'].forEach(s => { %>
+          <% ['draft','sent','confirmed','cancelled'].forEach(s => { %>
           <li><a class="dropdown-item" href="#" onclick="setStatus('<%= s %>');return false"><%= s.toUpperCase() %></a></li>
           <% }) %>
         </ul>
       </div>
+      <!-- Approval status badge -->
+      <% if (q.approval_status && q.approval_status !== 'draft') { %>
+      <% const asc = {pending:'bg-warning text-dark',approved:'bg-success',rejected:'bg-danger'}; %>
+      <span class="badge <%= asc[q.approval_status]||'bg-secondary' %>">
+        <i class="bi bi-shield-check me-1"></i><%= q.approval_status.toUpperCase() %>
+      </span>
+      <% } %>
+      <!-- Submit for Approval (non-admin, when draft/sent) -->
+      <% if (!isAdm && (!q.approval_status || q.approval_status === 'draft') && q.status !== 'cancelled') { %>
+      <form method="post" action="/spare-quotations/<%= q.id %>/submit-approval" style="display:inline"
+        onsubmit="return confirm('Submit this quotation for admin approval?')">
+        <button class="btn btn-sm btn-warning text-dark"><i class="bi bi-send me-1"></i>Submit for Approval</button>
+      </form>
+      <% } %>
       <!-- WhatsApp -->
       <% if (q.mobile) { %>
-      <a href="https://wa.me/91<%= q.mobile.replace(/\D/g,'') %>?text=<%= encodeURIComponent('Dear ' + q.customer_name + ',\nPlease find your spare part quotation ' + q.quotation_no + ' attached. Total: ₹' + q.grand_total.toFixed(2)) %>"
+      <a href="https://wa.me/91<%= q.mobile.replace(/\D/g,'') %>?text=<%= encodeURIComponent('Dear ' + q.customer_name + ',\nKindly find your spare parts quotation ' + q.quotation_no + '.\nAmount: ₹' + (q.grand_total||0).toLocaleString('en-IN') + '\nFor details contact us.') %>"
         target="_blank" class="btn btn-sm btn-success" title="WhatsApp">
         <i class="bi bi-whatsapp me-1"></i>WhatsApp
       </a>
       <% } %>
-      <a href="/spare-quotations/<%= q.id %>/pdf" class="btn btn-sm btn-danger">
+      <a href="/spare-quotations/<%= q.id %>/pdf" class="btn btn-sm btn-danger" target="_blank">
         <i class="bi bi-file-pdf me-1"></i>PDF
       </a>
       <a href="/spare-quotations/<%= q.id %>/edit" class="btn btn-sm btn-outline-secondary">
@@ -41,7 +56,37 @@
     </div>
   </div>
 
-  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash && flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash && flash.error)   { %><div class="alert alert-danger  alert-dismissible"><%= flash.error   %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <!-- ── Approval Panel (Admin only, when pending) ── -->
+  <% if (isAdm && q.approval_status === 'pending') { %>
+  <div class="alert alert-warning d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-shield-exclamation fs-4 mt-1"></i>
+    <div class="flex-grow-1">
+      <div class="fw-bold mb-1">Pending Approval</div>
+      <div class="small text-muted mb-2">This quotation was submitted for your approval by <%= q.creator_name || 'salesperson' %>.</div>
+      <form method="post" action="/spare-quotations/<%= q.id %>/approve" class="d-flex gap-2 align-items-end flex-wrap">
+        <div>
+          <label class="form-label small mb-1">Notes (optional)</label>
+          <input type="text" name="notes" class="form-control form-control-sm" style="min-width:250px" placeholder="Approval notes...">
+        </div>
+        <button type="submit" name="action" value="approve" class="btn btn-sm btn-success"><i class="bi bi-check-circle me-1"></i>Approve</button>
+        <button type="submit" name="action" value="reject"  class="btn btn-sm btn-danger"><i class="bi bi-x-circle me-1"></i>Reject</button>
+      </form>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- ── Approval Result ── -->
+  <% if (q.approval_status === 'approved' || q.approval_status === 'rejected') { %>
+  <div class="alert <%= q.approval_status === 'approved' ? 'alert-success' : 'alert-danger' %> small mb-3 py-2">
+    <i class="bi bi-shield-<%= q.approval_status === 'approved' ? 'check' : 'x' %> me-2"></i>
+    <b><%= q.approval_status === 'approved' ? 'Approved' : 'Rejected' %></b>
+    <% if (q.approval_notes) { %> — <%= q.approval_notes %><% } %>
+    <% if (q.approved_at) { %><span class="text-muted ms-2"><%= new Date(q.approved_at).toLocaleDateString('en-IN') %></span><% } %>
+  </div>
+  <% } %>
 
   <div class="row g-3 mb-3">
     <div class="col-md-6">
@@ -129,6 +174,9 @@
           <% } else { %>
           <tr><td colspan="10" class="text-end text-muted">Total CGST:</td><td colspan="2" class="text-end">₹<%= formatINR(q.total_gst/2) %></td></tr>
           <tr><td colspan="10" class="text-end text-muted">Total SGST:</td><td colspan="2" class="text-end">₹<%= formatINR(q.total_gst/2) %></td></tr>
+          <% } %>
+          <% if (q.roundoff_amount && q.roundoff_amount !== 0) { %>
+          <tr><td colspan="10" class="text-end text-muted">Round Off:</td><td colspan="2" class="text-end"><%= q.roundoff_amount > 0 ? '+' : '' %>₹<%= formatINR(q.roundoff_amount) %></td></tr>
           <% } %>
           <tr class="table-success">
             <td colspan="10" class="text-end fw-bold">Grand Total:</td>

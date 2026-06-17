@@ -120,7 +120,7 @@
               </div>
               <div class="col-md-1">
                 <label class="form-label small fw-semibold">Qty</label>
-                <input type="number" id="addQty" class="form-control form-control-sm" value="1" min="1" step="0.01">
+                <input type="number" id="addQty" class="form-control form-control-sm" value="1" min="1" step="1">
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold">Rate (Basic)</label>
@@ -192,6 +192,7 @@
                   <tr id="rowCgst"><td class="text-muted">CGST</td><td class="text-end" id="totCgst">₹0.00</td></tr>
                   <tr id="rowSgst"><td class="text-muted">SGST</td><td class="text-end" id="totSgst">₹0.00</td></tr>
                   <tr id="rowIgst" class="d-none"><td class="text-muted">IGST</td><td class="text-end" id="totIgst">₹0.00</td></tr>
+                  <tr class="d-none"><td class="text-muted small">Round Off</td><td class="text-end small" id="totRoundoff">₹0.00</td></tr>
                   <tr class="table-success fw-bold"><td>Grand Total</td><td class="text-end" id="totGrand">₹0.00</td></tr>
                 </table>
               </div>
@@ -324,7 +325,7 @@ document.addEventListener('click', e => {
 // ── Add part to line items ──────────────────────────────────────────────────────
 function addSelectedPart() {
   if (!selectedPart) { alert('Search and select a part first.'); return; }
-  const qty  = parseFloat(document.getElementById('addQty').value) || 1;
+  const qty  = Math.max(1, Math.round(parseFloat(document.getElementById('addQty').value) || 1));
   const rate = parseFloat(document.getElementById('addRate').value) || 0;
   const disc = parseFloat(document.getElementById('addDiscount').value) || 0;
 
@@ -371,7 +372,7 @@ function renderItems() {
       <td class="small font-monospace">${it.part_no||'—'}</td>
       <td class="small fw-semibold">${it.description}</td>
       <td class="small">${it.hsn||''}</td>
-      <td><input type="number" class="form-control form-control-sm p-1" style="min-width:60px" value="${it.qty}" min="0.01" step="0.01" onchange="updateRow(${i},'qty',this.value)"></td>
+      <td><input type="number" class="form-control form-control-sm p-1" style="min-width:60px" value="${it.qty}" min="1" step="1" onchange="updateRow(${i},'qty',this.value)"></td>
       <td><input type="number" class="form-control form-control-sm p-1" value="${it.basic_rate}" min="0" step="0.01" onchange="updateRow(${i},'basic_rate',this.value)"></td>
       <td><input type="number" class="form-control form-control-sm p-1" value="${it.discount_percent}" min="0" max="100" step="0.01" onchange="updateRow(${i},'discount_percent',this.value)"></td>
       <td class="text-end small">₹${(it.discount_amount||0).toFixed(2)}</td>
@@ -386,6 +387,17 @@ function renderItems() {
   updateTotals();
 }
 
+function checkGstMismatch(it) {
+  const expected = parseFloat((it.line_basic * it.tax_rate / 100).toFixed(2));
+  const actual   = it.tax_amount;
+  if (Math.abs(expected - actual) > 0.01) {
+    const msg = `GST Mismatch on "${it.description}": Expected ₹${expected.toFixed(2)} (${it.tax_rate}% of ₹${it.line_basic.toFixed(2)}) but got ₹${actual.toFixed(2)}. Auto-corrected.`;
+    console.warn(msg);
+    it.tax_amount = expected;
+    it.line_total = parseFloat((it.line_basic + expected).toFixed(2));
+  }
+}
+
 function updateRow(i, field, val) {
   items[i][field] = parseFloat(val) || 0;
   const it = items[i];
@@ -397,6 +409,7 @@ function updateRow(i, field, val) {
   it.net_rate    = parseFloat((lineBas / it.qty).toFixed(2));
   it.line_basic  = parseFloat(lineBas.toFixed(2));
   it.line_total  = parseFloat((lineBas + taxAmt).toFixed(2));
+  checkGstMismatch(it);
   renderItems();
 }
 
@@ -415,9 +428,20 @@ function updateTotals() {
     totGst    += it.tax_amount  || 0;
     totGrand  += it.line_total  || 0;
   });
+  const rounded = Math.round(totGrand);
+  const roundoff = parseFloat((rounded - totGrand).toFixed(2));
+
   const fmt = n => '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('totBasic').textContent = fmt(totBasic);
-  document.getElementById('totGrand').textContent = fmt(totGrand);
+
+  const roEl = document.getElementById('totRoundoff');
+  if (roundoff !== 0) {
+    roEl.textContent = (roundoff > 0 ? '+' : '') + fmt(roundoff);
+    roEl.closest('tr').classList.remove('d-none');
+  } else {
+    roEl.closest('tr').classList.add('d-none');
+  }
+  document.getElementById('totGrand').textContent = fmt(rounded);
 
   const isIGST = taxMode === 'IGST';
   document.getElementById('rowCgst').classList.toggle('d-none', isIGST);

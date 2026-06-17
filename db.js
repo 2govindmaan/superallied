@@ -113,6 +113,11 @@ try { db.exec("ALTER TABLE quotations ADD COLUMN tyre_option TEXT DEFAULT 'IT'")
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN show_discount INTEGER DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN quotation_date DATE"); } catch(e) {}
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN salesperson_id INTEGER REFERENCES salespersons(id)"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN approval_status TEXT DEFAULT 'draft'"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN approval_notes TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN approved_by INTEGER REFERENCES users(id)"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN approved_at DATETIME"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN roundoff_amount REAL DEFAULT 0"); } catch(e) {}
 
 // Machine quotation salesperson link
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_id INTEGER REFERENCES salespersons(id)"); } catch(e) {}
@@ -613,7 +618,8 @@ const defaultSettings = {
   company_phone_sales: '',
   company_phone_service: '',
   company_state: 'Uttar Pradesh',
-  company_state_code: '09'
+  company_state_code: '09',
+  company_upi: ''
 };
 
 Object.entries(defaultSettings).forEach(([key, defaultValue]) => {

@@ -68,6 +68,9 @@ router.post('/', (req, res) => {
     totalGst    += it.tax_amount || 0;
     grandTotal  += it.line_total || 0;
   });
+  const roundedGrand = Math.round(grandTotal);
+  const roundoffAmt  = parseFloat((roundedGrand - grandTotal).toFixed(2));
+  grandTotal = roundedGrand;
 
   const { quotationNo, financialYear, serialNumber } = nextSpareQuotationNumber();
 
@@ -90,8 +93,8 @@ router.post('/', (req, res) => {
     (quotation_no,serial_number,financial_year,sold_machine_id,machine_no,customer_name,
      customer_address,customer_gstin,contact_person,mobile,place_of_supply,
      tax_mode,salesperson,salesperson_id,validity_days,remarks,terms,status,show_discount,quotation_date,
-     total_basic,total_gst,grand_total,created_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+     total_basic,total_gst,grand_total,roundoff_amount,created_by)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(quotationNo, serialNumber, financialYear, soldMachineId,
          f.machine_no||'', f.customer_name.trim(), f.customer_address||'',
          f.customer_gstin||'', f.contact_person||'', f.mobile||'',
@@ -100,7 +103,7 @@ router.post('/', (req, res) => {
          f.remarks||'', f.terms||'', 'draft',
          f.show_discount === 'on' ? 1 : 0,
          f.quotation_date || new Date().toISOString().slice(0,10),
-         totalBasic, totalGst, grandTotal, req.session.userId);
+         totalBasic, totalGst, grandTotal, roundoffAmt, req.session.userId);
 
   const qid = info.lastInsertRowid;
   const insertItem = db.prepare(`INSERT INTO spare_quotation_items
@@ -120,7 +123,10 @@ router.get('/:id', (req, res) => {
   const q = db.prepare('SELECT sq.*, u.full_name as creator_name FROM spare_quotations sq LEFT JOIN users u ON u.id=sq.created_by WHERE sq.id=?').get(req.params.id);
   if (!q) return res.redirect('/spare-quotations');
   const items = db.prepare('SELECT * FROM spare_quotation_items WHERE quotation_id=?').all(req.params.id);
-  res.render('spare-quotations/view', { title: `Quotation ${q.quotation_no}`, q, items, formatINR });
+  const flash = req.session.flash || {};
+  delete req.session.flash;
+  const isAdmin = req.session.userRole === 'admin';
+  res.render('spare-quotations/view', { title: `Quotation ${q.quotation_no}`, q, items, formatINR, flash, user: req.session, isAdmin });
 });
 
 // ── Edit form ─────────────────────────────────────────────────────────────────
@@ -159,6 +165,9 @@ router.post('/:id/update', (req, res) => {
     totalGst    += it.tax_amount || 0;
     grandTotal  += it.line_total || 0;
   });
+  const roundedGrand2 = Math.round(grandTotal);
+  const roundoffAmt2  = parseFloat((roundedGrand2 - grandTotal).toFixed(2));
+  grandTotal = roundedGrand2;
 
   let soldMachineId = null;
   if (f.machine_no) {
@@ -177,14 +186,14 @@ router.post('/:id/update', (req, res) => {
     sold_machine_id=?,machine_no=?,customer_name=?,customer_address=?,customer_gstin=?,
     contact_person=?,mobile=?,place_of_supply=?,tax_mode=?,salesperson=?,salesperson_id=?,
     validity_days=?,remarks=?,terms=?,status=?,show_discount=?,quotation_date=?,
-    total_basic=?,total_gst=?,grand_total=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+    total_basic=?,total_gst=?,grand_total=?,roundoff_amount=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
     .run(soldMachineId, f.machine_no||'', f.customer_name||'', f.customer_address||'',
          f.customer_gstin||'', f.contact_person||'', f.mobile||'',
          f.place_of_supply||'', f.tax_mode||'CGST_SGST', spName2, spId2,
          +f.validity_days||7, f.remarks||'', f.terms||'', f.status||'draft',
          f.show_discount === 'on' ? 1 : 0,
          f.quotation_date || new Date().toISOString().slice(0,10),
-         totalBasic, totalGst, grandTotal, req.params.id);
+         totalBasic, totalGst, grandTotal, roundoffAmt2, req.params.id);
 
   // Replace items
   db.prepare('DELETE FROM spare_quotation_items WHERE quotation_id=?').run(req.params.id);
@@ -241,10 +250,51 @@ router.post('/:id/clone', (req, res) => {
 // ── Status update ─────────────────────────────────────────────────────────────
 router.post('/:id/status', (req, res) => {
   const { status } = req.body;
-  const validStatuses = ['draft','sent','approved','rejected','converted'];
+  const validStatuses = ['draft','sent','confirmed','cancelled'];
   if (!validStatuses.includes(status)) return res.json({ ok: false, error: 'Invalid status' });
   db.prepare('UPDATE spare_quotations SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(status, req.params.id);
   res.json({ ok: true });
+});
+
+// ── Submit for approval ───────────────────────────────────────────────────────
+router.post('/:id/submit-approval', (req, res) => {
+  const q = db.prepare('SELECT * FROM spare_quotations WHERE id=?').get(req.params.id);
+  if (!q) return res.redirect('/spare-quotations');
+  db.prepare("UPDATE spare_quotations SET approval_status='pending',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(req.params.id);
+  const admins = db.prepare("SELECT id FROM users WHERE role='admin'").all();
+  admins.forEach(a => {
+    try {
+      db.prepare('INSERT INTO notifications (user_id,type,message,link) VALUES (?,?,?,?)').run(
+        a.id, 'approval_request',
+        `Quotation ${q.quotation_no} submitted for approval by ${res.locals.user?.full_name||'salesperson'}`,
+        `/spare-quotations/${q.id}`
+      );
+    } catch(e) {}
+  });
+  req.session.flash = { success: 'Submitted for approval. Admin has been notified.' };
+  res.redirect(`/spare-quotations/${req.params.id}`);
+});
+
+// ── Approve / Reject ──────────────────────────────────────────────────────────
+router.post('/:id/approve', (req, res) => {
+  if (res.locals.user?.role !== 'admin') return res.status(403).send('Admin only');
+  const { action, notes } = req.body;
+  const q = db.prepare('SELECT * FROM spare_quotations WHERE id=?').get(req.params.id);
+  if (!q) return res.redirect('/spare-quotations');
+  const newApproval = action === 'approve' ? 'approved' : 'rejected';
+  db.prepare('UPDATE spare_quotations SET approval_status=?,approval_notes=?,approved_by=?,approved_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?')
+    .run(newApproval, notes||'', req.session.userId, req.params.id);
+  if (q.created_by) {
+    try {
+      db.prepare('INSERT INTO notifications (user_id,type,message,link) VALUES (?,?,?,?)').run(
+        q.created_by, newApproval,
+        `Your quotation ${q.quotation_no} has been ${newApproval}${notes ? ': ' + notes : ''}`,
+        `/spare-quotations/${q.id}`
+      );
+    } catch(e) {}
+  }
+  req.session.flash = { success: `Quotation ${newApproval}.` };
+  res.redirect(`/spare-quotations/${req.params.id}`);
 });
 
 // ── PDF ───────────────────────────────────────────────────────────────────────
@@ -258,8 +308,16 @@ router.get('/:id/pdf', async (req, res) => {
   const logoB64 = fs.existsSync(LOGO_PATH)
     ? `data:image/jpeg;base64,${fs.readFileSync(LOGO_PATH).toString('base64')}` : '';
 
-  const qrData = `${s.company_name || 'Super Allied'}\nQuotation: ${q.quotation_no}\nTotal: ₹${q.grand_total}`;
-  const qrDataUrl = await QRCode.toDataURL(qrData, { width: 100, margin: 1 });
+  // UPI QR — use UPI format if UPI ID set, else plain text
+  let qrData;
+  if (s.company_upi) {
+    const upiName = encodeURIComponent(s.company_name || 'Super Allied');
+    const upiNote = encodeURIComponent(q.quotation_no);
+    qrData = `upi://pay?pa=${s.company_upi}&pn=${upiName}&am=${q.grand_total}&cu=INR&tn=${upiNote}`;
+  } else {
+    qrData = `${s.company_name || 'Super Allied'} | ${q.quotation_no} | ₹${q.grand_total}`;
+  }
+  const qrDataUrl = await QRCode.toDataURL(qrData, { width: 120, margin: 1, errorCorrectionLevel: 'M' });
 
   const isAdmin = res.locals.user?.role === 'admin';
   const html = await new Promise((resolve, reject) =>

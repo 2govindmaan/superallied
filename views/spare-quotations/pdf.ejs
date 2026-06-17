@@ -116,7 +116,6 @@
 <table class="outer">
 <tr>
   <td class="title-td" colspan="2">
-    <span class="juris-label">SUBJECT TO MEERUT JURISDICTION</span>
     <span class="doc-title">Spare Parts Quotation</span>
     <span class="orig-label">(Customer Copy)</span>
   </td>
@@ -173,17 +172,18 @@
   <thead>
     <tr>
       <th style="width:22px">Sl<br>No.</th>
-      <th class="tl" style="min-width:130px">Description of Goods</th>
-      <th style="width:62px">HSN/<br>SAC</th>
-      <th style="width:48px">GST<br>Rate</th>
-      <th style="width:36px">Qty</th>
-      <th style="width:70px">Rate<br>(₹)</th>
-      <th style="width:30px">Per</th>
+      <th style="width:72px">Part No.</th>
+      <th class="tl" style="min-width:110px">Description of Goods</th>
+      <th style="width:55px">HSN/<br>SAC</th>
+      <th style="width:42px">GST<br>Rate</th>
+      <th style="width:32px">Qty</th>
+      <th style="width:68px">Rate<br>(₹)</th>
+      <th style="width:28px">Per</th>
       <% if (showDisc) { %>
-      <th style="width:42px">Disc<br>%</th>
-      <th style="width:58px">Disc<br>Amt</th>
+      <th style="width:38px">Disc<br>%</th>
+      <th style="width:52px">Disc<br>Amt</th>
       <% } %>
-      <th style="width:75px">Amount<br>(₹)</th>
+      <th style="width:72px">Amount<br>(₹)</th>
     </tr>
   </thead>
   <tbody>
@@ -192,9 +192,9 @@
     %>
     <tr>
       <td class="tc"><%= idx + 1 %></td>
+      <td class="tc mono" style="font-size:8.5px"><%= it.part_no || '—' %></td>
       <td>
         <span class="desc-main"><%= it.description %></span>
-        <% if (it.part_no) { %><span class="desc-code"><%= it.part_no %></span><% } %>
       </td>
       <td class="tc mono" style="font-size:9px"><%= it.hsn || '—' %></td>
       <td class="tc"><%= it.tax_rate %>%</td>
@@ -212,23 +212,30 @@
     <!-- Tax lines (like the invoice shows OUTPUT CGST / SGST) -->
     <% if (isIGST) { %>
     <tr style="background:#f9f9f9">
-      <td colspan="<%= showDisc ? 9 : 7 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Output IGST</td>
+      <td colspan="<%= showDisc ? 10 : 8 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Output IGST</td>
       <td class="tr" style="font-size:9px"><%= fmtAmt(q.total_gst) %></td>
     </tr>
     <% } else { %>
     <tr style="background:#f9f9f9">
-      <td colspan="<%= showDisc ? 9 : 7 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Output CGST</td>
+      <td colspan="<%= showDisc ? 10 : 8 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Output CGST</td>
       <td class="tr" style="font-size:9px"><%= fmtAmt(q.total_gst / 2) %></td>
     </tr>
     <tr style="background:#f9f9f9">
-      <td colspan="<%= showDisc ? 9 : 7 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Output SGST/UTGST</td>
+      <td colspan="<%= showDisc ? 10 : 8 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Output SGST/UTGST</td>
       <td class="tr" style="font-size:9px"><%= fmtAmt(q.total_gst / 2) %></td>
     </tr>
     <% } %>
 
+    <!-- Roundoff row -->
+    <% if (q.roundoff_amount && q.roundoff_amount !== 0) { %>
+    <tr style="background:#f9f9f9">
+      <td colspan="<%= showDisc ? 10 : 8 %>" style="font-style:italic; font-size:9px; color:#555; padding-right:6px; text-align:right;">Round Off</td>
+      <td class="tr" style="font-size:9px"><%= q.roundoff_amount > 0 ? '+' : '' %><%= fmtAmt(q.roundoff_amount) %></td>
+    </tr>
+    <% } %>
     <!-- Grand Total row -->
     <tr class="total-row">
-      <td colspan="<%= showDisc ? 9 : 7 %>" class="tr bold" style="font-size:10px; padding-right:6px;">Grand Total</td>
+      <td colspan="<%= showDisc ? 10 : 8 %>" class="tr bold" style="font-size:10px; padding-right:6px;">Grand Total</td>
       <td class="tr bold" style="font-size:11px">₹ <%= fmtAmt(q.grand_total) %></td>
     </tr>
   </tbody>
@@ -250,10 +257,6 @@
     <table class="tax-sum">
       <thead>
         <tr>
-          <% if (qrDataUrl) { %><th rowspan="<%= taxRows.length + 2 %>" style="width:70px; text-align:center; font-weight:normal;">
-            <img src="<%= qrDataUrl %>" style="height:60px; display:block; margin:0 auto 3px auto;"><br>
-            <span style="font-size:8px">Scan to Pay</span>
-          </th><% } %>
           <th>HSN/SAC</th>
           <th>Taxable Value</th>
           <% if (isIGST) { %>
@@ -305,11 +308,11 @@
 </table>
 
 
-<!-- ═══ FOOTER: DECLARATION | BANK | SIGNATURE ═══ -->
+<!-- ═══ FOOTER: DECLARATION | SIGNATURE ═══ -->
 <table class="footer-outer" style="border-top: none; margin-top:0;">
   <tr>
     <!-- Declaration -->
-    <td style="width:38%">
+    <td style="width:60%">
       <div class="decl-head">Declaration</div>
       <div style="font-size:8.5px; line-height:1.65; color:#333;">
         We declare that this quotation shows the actual price of the goods described and that all particulars are true and correct.<br><br>
@@ -322,21 +325,8 @@
       </div>
     </td>
 
-    <!-- Bank Details -->
-    <td style="width:32%">
-      <div class="bank-head">Company's Bank Details</div>
-      <% if (s.bank_account) { %>
-      <div class="bank-line">
-        <b>A/c Name:</b> <%= s.bank_beneficiary %><br>
-        <b>A/c No.:</b> <span class="mono"><b><%= s.bank_account %></b></span><br>
-        <b>IFSC Code:</b> <span class="mono"><b><%= s.bank_ifsc %></b></span><br>
-        <b>Branch:</b> <%= s.bank_branch %>
-      </div>
-      <% } %>
-    </td>
-
     <!-- Signature -->
-    <td style="width:30%" class="sig-area">
+    <td style="width:40%" class="sig-area">
       <div class="sig-line">
         Customer's Seal and Signature
       </div>
@@ -344,6 +334,30 @@
         for <b><%= s.company_name || 'SUPER ALLIED' %></b><br>
         Authorised Signatory
       </div>
+    </td>
+  </tr>
+</table>
+
+<!-- ═══ PAYMENT DETAILS (end of page) ═══ -->
+<table class="footer-outer" style="border-top: none; margin-top:0;">
+  <tr>
+    <% if (qrDataUrl) { %>
+    <td style="width:90px; text-align:center; vertical-align:middle; padding:6px;">
+      <img src="<%= qrDataUrl %>" style="height:75px; display:block; margin:0 auto 3px auto;">
+      <span style="font-size:8px; color:#555;">Scan to Pay</span>
+    </td>
+    <% } %>
+    <td>
+      <div class="bank-head">Payment Details</div>
+      <% if (s.bank_account) { %>
+      <div class="bank-line">
+        <b>A/c Name:</b> <%= s.bank_beneficiary %>&nbsp;&nbsp;
+        <b>A/c No.:</b> <span class="mono"><b><%= s.bank_account %></b></span>&nbsp;&nbsp;
+        <b>IFSC:</b> <span class="mono"><b><%= s.bank_ifsc %></b></span>&nbsp;&nbsp;
+        <b>Branch:</b> <%= s.bank_branch %><br>
+        <% if (s.company_upi) { %><b>UPI:</b> <span class="mono"><%= s.company_upi %></span><% } %>
+      </div>
+      <% } %>
     </td>
   </tr>
 </table>

@@ -40,6 +40,70 @@ router.post('/', (req, res) => {
   res.redirect(`/salespersons/${info.lastInsertRowid}`);
 });
 
+// ── Reports ───────────────────────────────────────────────────────────────────
+router.get('/reports/summary', (req, res) => {
+  const { from, to } = req.query;
+  let dCond = '';
+  const dp = [];
+  if (from) { dCond += ' AND date(sq.created_at)>=?'; dp.push(from); }
+  if (to)   { dCond += ' AND date(sq.created_at)<=?'; dp.push(to); }
+
+  // Per-salesperson spare quotation stats
+  const spareStats = db.prepare(`
+    SELECT
+      COALESCE(sp.name, sq.salesperson, 'Unassigned') AS sp_name,
+      sp.id AS sp_id,
+      COUNT(sq.id) AS total_count,
+      COALESCE(SUM(sq.grand_total),0) AS total_value,
+      SUM(CASE WHEN sq.status='draft'     THEN 1 ELSE 0 END) AS draft_count,
+      SUM(CASE WHEN sq.status='sent'      THEN 1 ELSE 0 END) AS sent_count,
+      SUM(CASE WHEN sq.status='confirmed' THEN 1 ELSE 0 END) AS confirmed_count,
+      SUM(CASE WHEN sq.status='cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
+      COALESCE(SUM(CASE WHEN sq.status='confirmed' THEN sq.grand_total ELSE 0 END),0) AS confirmed_value
+    FROM spare_quotations sq
+    LEFT JOIN salespersons sp ON sp.id=sq.salesperson_id
+    WHERE 1=1 ${dCond}
+    GROUP BY COALESCE(sp.id, sq.salesperson)
+    ORDER BY total_value DESC
+  `).all(...dp);
+
+  // Per-salesperson machine quotation stats
+  const machineStats = db.prepare(`
+    SELECT
+      COALESCE(sp.name, q.salesperson_name, 'Unassigned') AS sp_name,
+      sp.id AS sp_id,
+      COUNT(q.id) AS total_count,
+      COALESCE(SUM(q.total_price),0) AS total_value,
+      SUM(CASE WHEN q.status='draft'     THEN 1 ELSE 0 END) AS draft_count,
+      SUM(CASE WHEN q.status='sent'      THEN 1 ELSE 0 END) AS sent_count,
+      SUM(CASE WHEN q.status='confirmed' THEN 1 ELSE 0 END) AS confirmed_count
+    FROM quotations q
+    LEFT JOIN salespersons sp ON sp.id=q.salesperson_id
+    GROUP BY COALESCE(sp.id, q.salesperson_name)
+    ORDER BY total_value DESC
+  `).all();
+
+  // Monthly trend — all salespersons — spare
+  const monthlyTrend = db.prepare(`
+    SELECT
+      strftime('%Y-%m', sq.created_at) AS month,
+      COALESCE(sp.name, sq.salesperson, 'Unassigned') AS sp_name,
+      COUNT(*) AS count,
+      COALESCE(SUM(sq.grand_total),0) AS value
+    FROM spare_quotations sq
+    LEFT JOIN salespersons sp ON sp.id=sq.salesperson_id
+    WHERE sq.created_at >= date('now','-6 months') ${dCond}
+    GROUP BY month, COALESCE(sp.id, sq.salesperson)
+    ORDER BY month ASC
+  `).all(...dp);
+
+  res.render('salespersons/report', {
+    title: 'Salesperson Reports', spareStats, machineStats, monthlyTrend,
+    from: from||'', to: to||'', formatINR
+  });
+});
+
+
 // ── Profile ───────────────────────────────────────────────────────────────────
 router.get('/:id', (req, res) => {
   const sp = db.prepare('SELECT * FROM salespersons WHERE id=?').get(req.params.id);
@@ -140,69 +204,6 @@ router.post('/:id/delete', (req, res) => {
   auditLog(req.session.userId, 'SP_DELETED', 'salespersons', req.params.id, '');
   req.session.flash = { success: 'Salesperson deleted.' };
   res.redirect('/salespersons');
-});
-
-// ── Reports ───────────────────────────────────────────────────────────────────
-router.get('/reports/summary', (req, res) => {
-  const { from, to } = req.query;
-  let dCond = '';
-  const dp = [];
-  if (from) { dCond += ' AND date(sq.created_at)>=?'; dp.push(from); }
-  if (to)   { dCond += ' AND date(sq.created_at)<=?'; dp.push(to); }
-
-  // Per-salesperson spare quotation stats
-  const spareStats = db.prepare(`
-    SELECT
-      COALESCE(sp.name, sq.salesperson, 'Unassigned') AS sp_name,
-      sp.id AS sp_id,
-      COUNT(sq.id) AS total_count,
-      COALESCE(SUM(sq.grand_total),0) AS total_value,
-      SUM(CASE WHEN sq.status='draft'     THEN 1 ELSE 0 END) AS draft_count,
-      SUM(CASE WHEN sq.status='sent'      THEN 1 ELSE 0 END) AS sent_count,
-      SUM(CASE WHEN sq.status='confirmed' THEN 1 ELSE 0 END) AS confirmed_count,
-      SUM(CASE WHEN sq.status='cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
-      COALESCE(SUM(CASE WHEN sq.status='confirmed' THEN sq.grand_total ELSE 0 END),0) AS confirmed_value
-    FROM spare_quotations sq
-    LEFT JOIN salespersons sp ON sp.id=sq.salesperson_id
-    WHERE 1=1 ${dCond}
-    GROUP BY COALESCE(sp.id, sq.salesperson)
-    ORDER BY total_value DESC
-  `).all(...dp);
-
-  // Per-salesperson machine quotation stats
-  const machineStats = db.prepare(`
-    SELECT
-      COALESCE(sp.name, q.salesperson_name, 'Unassigned') AS sp_name,
-      sp.id AS sp_id,
-      COUNT(q.id) AS total_count,
-      COALESCE(SUM(q.total_price),0) AS total_value,
-      SUM(CASE WHEN q.status='draft'     THEN 1 ELSE 0 END) AS draft_count,
-      SUM(CASE WHEN q.status='sent'      THEN 1 ELSE 0 END) AS sent_count,
-      SUM(CASE WHEN q.status='confirmed' THEN 1 ELSE 0 END) AS confirmed_count
-    FROM quotations q
-    LEFT JOIN salespersons sp ON sp.id=q.salesperson_id
-    GROUP BY COALESCE(sp.id, q.salesperson_name)
-    ORDER BY total_value DESC
-  `).all();
-
-  // Monthly trend — all salespersons — spare
-  const monthlyTrend = db.prepare(`
-    SELECT
-      strftime('%Y-%m', sq.created_at) AS month,
-      COALESCE(sp.name, sq.salesperson, 'Unassigned') AS sp_name,
-      COUNT(*) AS count,
-      COALESCE(SUM(sq.grand_total),0) AS value
-    FROM spare_quotations sq
-    LEFT JOIN salespersons sp ON sp.id=sq.salesperson_id
-    WHERE sq.created_at >= date('now','-6 months') ${dCond}
-    GROUP BY month, COALESCE(sp.id, sq.salesperson)
-    ORDER BY month ASC
-  `).all(...dp);
-
-  res.render('salespersons/report', {
-    title: 'Salesperson Reports', spareStats, machineStats, monthlyTrend,
-    from: from||'', to: to||'', formatINR
-  });
 });
 
 module.exports = router;

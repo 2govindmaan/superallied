@@ -39,6 +39,7 @@
               <div class="col-md-6"><label class="form-label">Bank Account No.</label><input type="text" name="bank_account" class="form-control font-monospace" value="<%= s.bank_account %>"></div>
               <div class="col-md-6"><label class="form-label">IFSC Code</label><input type="text" name="bank_ifsc" class="form-control font-monospace" value="<%= s.bank_ifsc %>"></div>
               <div class="col-md-6"><label class="form-label">Branch</label><input type="text" name="bank_branch" class="form-control" value="<%= s.bank_branch %>"></div>
+              <div class="col-md-6"><label class="form-label">UPI ID <span class="text-muted small">(for QR code on quotation)</span></label><input type="text" name="company_upi" class="form-control font-monospace" value="<%= s.company_upi || '' %>" placeholder="name@upi"></div>
               <hr>
               <div class="col-md-6"><label class="form-label">Default Salesperson Name</label><input type="text" name="salesperson_name" class="form-control" value="<%= s.salesperson_name %>"></div>
               <div class="col-md-6"><label class="form-label">Default Salesperson Phone</label><input type="text" name="salesperson_phone" class="form-control" value="<%= s.salesperson_phone %>"></div>
