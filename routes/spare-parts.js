@@ -105,33 +105,62 @@ router.get('/export/csv', (req, res) => {
 });
 
 // ── Excel import ──────────────────────────────────────────────────────────────
+// ── Parse preview (for field mapping) ────────────────────────────────────────
+router.post('/parse-preview', (req, res) => {
+  try {
+    const { data } = req.body;
+    if (!data) return res.json({ ok: false, error: 'No data.' });
+    const buf  = Buffer.from(data, 'base64');
+    const wb   = XLSX.read(buf, { type: 'buffer' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+    if (!rows.length) return res.json({ ok: false, error: 'Empty file.' });
+    const headers = rows[0].map(h => String(h).trim()).filter(Boolean);
+    const sample  = rows.slice(1, 4).map(r => headers.map((_, i) => String(r[i]||'')));
+    res.json({ ok: true, headers, sample });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
 router.post('/import/excel', (req, res) => {
   try {
-    const { data, mode } = req.body; // mode: 'insert' or 'upsert'
+    const { data, mode, mapping } = req.body; // mode: 'insert' or 'upsert'
     if (!data) return res.json({ ok: false, error: 'No data received.' });
     const buf  = Buffer.from(data, 'base64');
     const wb   = XLSX.read(buf, { type: 'buffer' });
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const mp   = mapping || {};
 
     let inserted = 0, updated = 0, skipped = 0, errors = [];
+
+    // Helper: mapping-aware column getter with legacy fallbacks
+    const gStr = (row, field, ...legacy) => {
+      if (mp[field]) return String(row[mp[field]] ?? '').trim();
+      for (const k of legacy) { const v = row[k]; if (v !== undefined && String(v).trim()) return String(v).trim(); }
+      return '';
+    };
+    const gNum = (row, field, ...legacy) => {
+      if (mp[field]) return parseFloat(row[mp[field]]) || 0;
+      for (const k of legacy) { const v = row[k]; if (v !== undefined && v !== '') return parseFloat(v) || 0; }
+      return 0;
+    };
 
     db.exec('BEGIN TRANSACTION');
     try {
     for (const row of rows) {
-      const desc = String(row['Material Description'] || row['material_description'] || '').trim();
-      const sap  = String(row['SAP Part No.'] || row['SAP Part no.'] || row['sap_part_no'] || '').trim();
+      const desc = gStr(row,'material_description','Material Description','material_description');
+      const sap  = gStr(row,'sap_part_no','SAP Part No.','SAP Part no.','sap_part_no');
       if (!desc) { skipped++; continue; }
 
-      // Support both trimmed and padded column names (the actual file has leading spaces)
-      const g = (r, ...keys) => { for (const k of keys) { const v = r[k]; if (v !== undefined && v !== '') return v; } return 0; };
-      const ndpBasic = parseFloat(g(row, 'NDP Basic', '    NDP Basic', 'ndp_basic')) || 0;
-      const mrpBasic = parseFloat(g(row, 'MRP Basic', '    MRP Basic', 'mrp_basic')) || 0;
-      const taxRate  = parseFloat(g(row, 'TAX_RATE', 'Tax Rate')) || 18;
-      const ndpGst   = parseFloat(g(row, 'GST', '        GST', 'ndp_gst')) || Math.round(ndpBasic * taxRate / 100 * 100) / 100;
-      const mrpGst   = parseFloat(g(row, 'GST_1', '        GST_1', 'mrp_gst')) || Math.round(mrpBasic * taxRate / 100 * 100) / 100;
-      const ndpPrice = parseFloat(g(row, 'NDP', '          NDP', 'ndp_price')) || ndpBasic + ndpGst;
-      const mrpPrice = parseFloat(g(row, 'MRP', '          MRP', 'mrp_price')) || mrpBasic + mrpGst;
+      const ndpBasic = gNum(row,'ndp_basic','NDP Basic','    NDP Basic','ndp_basic');
+      const mrpBasic = gNum(row,'mrp_basic','MRP Basic','    MRP Basic','mrp_basic');
+      const taxRate  = gNum(row,'tax_rate','TAX_RATE','Tax Rate') || 18;
+      const ndpGst   = gNum(row,'ndp_gst','GST','        GST','ndp_gst') || Math.round(ndpBasic * taxRate / 100 * 100) / 100;
+      const mrpGst   = gNum(row,'mrp_gst','GST_1','        GST_1','mrp_gst') || Math.round(mrpBasic * taxRate / 100 * 100) / 100;
+      const ndpPrice = gNum(row,'ndp_price','NDP','          NDP','ndp_price') || ndpBasic + ndpGst;
+      const mrpPrice = gNum(row,'mrp_price','MRP','          MRP','mrp_price') || mrpBasic + mrpGst;
+      const rnd      = gStr(row,'rnd_part_no','RND Part No.','RND Part no.','rnd_part_no');
+      const hsn      = gStr(row,'hsn_code','HSN CODE','HSN Code','HSN','hsn_code');
 
       try {
         if (mode === 'upsert' && sap) {
@@ -140,23 +169,20 @@ router.post('/import/excel', (req, res) => {
             db.prepare(`UPDATE spare_parts SET rnd_part_no=?,material_description=?,hsn_code=?,
               tax_rate=?,ndp_basic=?,ndp_gst=?,ndp_price=?,mrp_basic=?,mrp_gst=?,mrp_price=?,
               updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-              .run((row['RND Part No.']||row['RND Part no.']||'')||'', desc, row['HSN CODE']||'',
-                   taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice, existing.id);
+              .run(rnd, desc, hsn, taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice, existing.id);
             updated++;
           } else {
             db.prepare(`INSERT INTO spare_parts (sap_part_no,rnd_part_no,material_description,
               hsn_code,tax_rate,ndp_basic,ndp_gst,ndp_price,mrp_basic,mrp_gst,mrp_price)
               VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-              .run(sap, (row['RND Part No.']||row['RND Part no.']||'')||'', desc, row['HSN CODE']||'',
-                   taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice);
+              .run(sap, rnd, desc, hsn, taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice);
             inserted++;
           }
         } else {
           db.prepare(`INSERT INTO spare_parts (sap_part_no,rnd_part_no,material_description,
             hsn_code,tax_rate,ndp_basic,ndp_gst,ndp_price,mrp_basic,mrp_gst,mrp_price)
             VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-            .run(sap, (row['RND Part No.']||row['RND Part no.']||'')||'', desc, row['HSN CODE']||'',
-                 taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice);
+            .run(sap, rnd, desc, hsn, taxRate, ndpBasic, ndpGst, ndpPrice, mrpBasic, mrpGst, mrpPrice);
           inserted++;
         }
       } catch(e) { errors.push(`${sap||desc}: ${e.message}`); skipped++; }

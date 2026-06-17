@@ -107,18 +107,42 @@ router.post('/:id/delete', (req, res) => {
   res.redirect('/sold-machines');
 });
 
+// ── Parse preview (for field mapping) ────────────────────────────────────────
+router.post('/parse-preview', (req, res) => {
+  try {
+    const { data } = req.body;
+    if (!data) return res.json({ ok: false, error: 'No data.' });
+    const buf  = Buffer.from(data, 'base64');
+    const wb   = XLSX.read(buf, { type: 'buffer', cellDates: false });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '', header: 1 });
+    if (!rows.length) return res.json({ ok: false, error: 'Empty file.' });
+    const headers = rows[0].map(h => String(h).trim()).filter(Boolean);
+    const sample  = rows.slice(1, 4).map(r => headers.map((_, i) => String(r[i]||'')));
+    res.json({ ok: true, headers, sample });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
 // ── Excel import ──────────────────────────────────────────────────────────────
 router.post('/import/excel', (req, res) => {
   try {
-    const { data } = req.body;
+    const { data, mapping } = req.body;
     if (!data) return res.json({ ok: false, error: 'No data received.' });
-    const buf = Buffer.from(data, 'base64');
-    const wb  = XLSX.read(buf, { type: 'buffer', cellDates: true });
-    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const buf  = Buffer.from(data, 'base64');
+    const wb   = XLSX.read(buf, { type: 'buffer', cellDates: false });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-    let inserted = 0, skipped = 0, errors = [];
+    // mapping: { machine_no: 'ColHeader', customer_name: 'ColHeader', ... }
+    // fallback: legacy fixed column names
+    const m = mapping || {};
+    const g = (row, field, ...fallbacks) => {
+      if (m[field]) return String(row[m[field]] ?? '').trim();
+      for (const k of fallbacks) { const v = row[k]; if (v !== undefined && String(v).trim()) return String(v).trim(); }
+      return '';
+    };
 
+    let inserted = 0, skipped = 0, errors = [];
     const stmt = db.prepare(`INSERT OR IGNORE INTO sold_machines
       (machine_no,chassis_number,engine_number,model,customer_name,customer_address,
        place_of_supply,contact_person,mobile_1,mobile_2,finance_type,financier,
@@ -126,21 +150,34 @@ router.post('/import/excel', (req, res) => {
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
     for (const row of rows) {
-      const mno = String(row['Machine No'] || row['machine_no'] || '').trim();
+      const mno  = g(row, 'machine_no',   'Machine No', 'machine_no', 'Machine Number', 'MachineNo');
       if (!mno) { skipped++; continue; }
-      const cust = String(row['Customer Name'] || row['customer_name'] || '').trim();
+      const cust = g(row, 'customer_name','Customer Name', 'customer_name', 'Name', 'CustomerName');
       try {
-        const info = stmt.run(mno, row['Chassis Number']||'', row['Engine Number']||'',
-          row['Model']||'', cust, row['Customer Address']||'',
-          row['Place of Supply']||'', row['Contact Person']||'',
-          String(row['Mobile 1']||''), String(row['Mobile 2']||''),
-          row['Finance Type']||'Cash', row['Financier']||'',
-          row['Registration No']||'', row['GST Number']||'',
-          row['PAN Number']||'', row['Dealer']||'',
-          row['Date of Sale']||null, req.session.userId);
+        const info = stmt.run(
+          mno,
+          g(row,'chassis_number','Chassis Number','Chassis No','chassis_number'),
+          g(row,'engine_number', 'Engine Number', 'Engine No', 'engine_number'),
+          g(row,'model',         'Model','model','Machine Model'),
+          cust,
+          g(row,'customer_address','Customer Address','Address','customer_address'),
+          g(row,'place_of_supply', 'Place of Supply','State','place_of_supply'),
+          g(row,'contact_person',  'Contact Person','Contact','contact_person'),
+          g(row,'mobile_1',        'Mobile 1','Mobile','Phone','mobile_1'),
+          g(row,'mobile_2',        'Mobile 2','Alt Mobile','mobile_2'),
+          g(row,'finance_type',    'Finance Type','Finance','finance_type') || 'Cash',
+          g(row,'financier',       'Financier','Bank','financier'),
+          g(row,'registration_no', 'Registration No','Reg No','Reg Number','registration_no'),
+          g(row,'gst_number',      'GST Number','GSTIN','gst_number'),
+          g(row,'pan_number',      'PAN Number','PAN','pan_number'),
+          g(row,'dealer',          'Dealer','dealer'),
+          g(row,'date_of_sale',    'Date of Sale','Sale Date','date_of_sale') || null,
+          req.session.userId
+        );
         if (info.changes > 0) inserted++; else skipped++;
       } catch(e) { errors.push(`${mno}: ${e.message}`); }
     }
+    auditLog(req.session?.userId, 'MACHINES_IMPORT', 'sold_machines', '', `inserted=${inserted}`);
     res.json({ ok: true, inserted, skipped, errors });
   } catch(e) {
     res.json({ ok: false, error: e.message });

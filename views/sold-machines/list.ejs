@@ -81,60 +81,173 @@
 </div>
 
 <!-- Import Modal -->
-<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
-  <div class="card border-0 shadow-lg" style="width:500px;max-width:95vw">
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;padding:20px 0">
+  <div class="card border-0 shadow-lg" style="width:700px;max-width:96vw">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">Import Machines from Excel</span>
-      <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('importModal').style.display='none'">✕</button>
+      <span class="fw-semibold"><i class="bi bi-upload me-2"></i>Import Machines from Excel</span>
+      <button class="btn btn-sm btn-outline-secondary" onclick="closeImport()">✕</button>
     </div>
-    <div class="card-body">
-      <p class="small text-muted">Excel columns: <strong>Machine No, Customer Name, Chassis Number, Engine Number, Model, Customer Address, Place of Supply, Contact Person, Mobile 1, Mobile 2, Finance Type, Financier, Registration No, GST Number, PAN Number, Dealer, Date of Sale</strong></p>
-      <input type="file" id="importFile" accept=".xlsx,.xls" class="form-control mb-3">
-      <div id="importResult" class="d-none alert"></div>
+
+    <!-- Step 1: File pick -->
+    <div id="step1" class="card-body">
+      <p class="text-muted small mb-3">Upload any Excel file. You'll map columns on the next screen.</p>
+      <input type="file" id="importFile" accept=".xlsx,.xls" class="form-control mb-2">
+      <div id="parseError" class="alert alert-danger d-none small py-2"></div>
     </div>
+
+    <!-- Step 2: Field mapping -->
+    <div id="step2" class="card-body d-none">
+      <div class="alert alert-info small py-2 mb-3" id="previewInfo"></div>
+      <div class="table-responsive" style="max-height:55vh;overflow-y:auto">
+        <table class="table table-sm table-bordered mb-0 small">
+          <thead class="table-light"><tr><th style="width:35%">System Field</th><th>Excel Column</th><th style="width:38%">Sample Value</th></tr></thead>
+          <tbody id="mappingRows"></tbody>
+        </table>
+      </div>
+      <div id="importResult" class="alert d-none mt-2"></div>
+    </div>
+
     <div class="card-footer d-flex gap-2 justify-content-end">
-      <button class="btn btn-outline-secondary" onclick="document.getElementById('importModal').style.display='none'">Cancel</button>
-      <button class="btn btn-success" onclick="doImportMachines()"><i class="bi bi-upload me-1"></i>Import</button>
+      <button class="btn btn-outline-secondary" onclick="closeImport()">Cancel</button>
+      <button id="btnParse"  class="btn btn-primary"  onclick="parseFile()"><i class="bi bi-arrow-right me-1"></i>Next: Map Fields</button>
+      <button id="btnImport" class="btn btn-success d-none" onclick="doImport()"><i class="bi bi-upload me-1"></i>Import</button>
     </div>
   </div>
 </div>
 
 <script>
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const CHUNK = 8192;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
+const MACHINE_FIELDS = [
+  { key:'machine_no',       label:'Machine No.',      required:true,  hints:['machine no','machine number','machineno','unit no'] },
+  { key:'customer_name',    label:'Customer Name',    required:false, hints:['customer name','name','customer','buyer'] },
+  { key:'chassis_number',   label:'Chassis Number',   required:false, hints:['chassis','chassis number','chassis no'] },
+  { key:'engine_number',    label:'Engine Number',    required:false, hints:['engine','engine number','engine no'] },
+  { key:'model',            label:'Model',            required:false, hints:['model','machine model','type'] },
+  { key:'customer_address', label:'Customer Address', required:false, hints:['address','customer address'] },
+  { key:'place_of_supply',  label:'Place of Supply',  required:false, hints:['place','state','place of supply'] },
+  { key:'contact_person',   label:'Contact Person',   required:false, hints:['contact','contact person'] },
+  { key:'mobile_1',         label:'Mobile 1',         required:false, hints:['mobile','mobile 1','phone','mobile no'] },
+  { key:'mobile_2',         label:'Mobile 2',         required:false, hints:['mobile 2','alt mobile','alternate'] },
+  { key:'finance_type',     label:'Finance Type',     required:false, hints:['finance','finance type','loan type'] },
+  { key:'financier',        label:'Financier',        required:false, hints:['financier','bank','financer'] },
+  { key:'registration_no',  label:'Registration No.', required:false, hints:['registration','reg no','reg number'] },
+  { key:'gst_number',       label:'GST Number',       required:false, hints:['gst','gstin','gst number'] },
+  { key:'pan_number',       label:'PAN Number',       required:false, hints:['pan','pan number'] },
+  { key:'dealer',           label:'Dealer',           required:false, hints:['dealer'] },
+  { key:'date_of_sale',     label:'Date of Sale',     required:false, hints:['date','date of sale','sale date'] },
+];
+
+let importBase64 = '', excelHeaders = [], sampleRows = [];
+
+function closeImport() {
+  document.getElementById('importModal').style.display = 'none';
+  document.getElementById('step1').classList.remove('d-none');
+  document.getElementById('step2').classList.add('d-none');
+  document.getElementById('btnParse').classList.remove('d-none');
+  document.getElementById('btnImport').classList.add('d-none');
+  document.getElementById('importFile').value = '';
+  document.getElementById('parseError').classList.add('d-none');
+  document.getElementById('importResult').classList.add('d-none');
 }
 
-async function doImportMachines() {
+function ab2b64(buf) {
+  const bytes = new Uint8Array(buf); let bin = ''; const C = 8192;
+  for (let i=0;i<bytes.length;i+=C) bin += String.fromCharCode.apply(null, bytes.subarray(i,i+C));
+  return btoa(bin);
+}
+
+function autoDetect(headers) {
+  const norm = h => h.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+  const mapping = {};
+  MACHINE_FIELDS.forEach(f => {
+    const match = headers.find(h => f.hints.some(hint => norm(h) === hint || norm(h).includes(hint)));
+    if (match) mapping[f.key] = match;
+  });
+  return mapping;
+}
+
+async function parseFile() {
   const file = document.getElementById('importFile').files[0];
-  if (!file) return alert('Select a file first.');
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const base64 = arrayBufferToBase64(e.target.result);
-    const r = await fetch('/sold-machines/import/excel', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ data: base64 })
-    });
-    const j = await r.json();
-    const div = document.getElementById('importResult');
-    div.classList.remove('d-none','alert-success','alert-danger');
-    if (j.ok) {
-      div.classList.add('alert-success');
-      div.innerHTML = `Imported: <strong>${j.inserted}</strong> new, <strong>${j.skipped}</strong> skipped.` +
-        (j.errors?.length ? `<br>Errors: ${j.errors.slice(0,3).join('; ')}` : '');
-      setTimeout(() => location.reload(), 2000);
-    } else {
-      div.classList.add('alert-danger');
-      div.textContent = j.error;
-    }
-    div.classList.add('d-block');
-  };
-  reader.readAsArrayBuffer(file);
+  if (!file) return alert('Select an Excel file first.');
+  const errDiv = document.getElementById('parseError');
+  errDiv.classList.add('d-none');
+  document.getElementById('btnParse').disabled = true;
+  document.getElementById('btnParse').textContent = 'Reading…';
+
+  const buf = await file.arrayBuffer();
+  importBase64 = ab2b64(buf);
+
+  const r = await fetch('/sold-machines/parse-preview', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ data: importBase64 })
+  });
+  const j = await r.json();
+  document.getElementById('btnParse').disabled = false;
+  document.getElementById('btnParse').textContent = 'Next: Map Fields';
+
+  if (!j.ok) { errDiv.textContent = j.error; errDiv.classList.remove('d-none'); return; }
+
+  excelHeaders = j.headers;
+  sampleRows   = j.sample;
+  const detected = autoDetect(excelHeaders);
+
+  document.getElementById('previewInfo').textContent =
+    `File has ${excelHeaders.length} columns. Auto-detected ${Object.keys(detected).length} field(s). Review and adjust below.`;
+
+  const tbody = document.getElementById('mappingRows');
+  tbody.innerHTML = MACHINE_FIELDS.map(f => {
+    const opts = ['<option value="">(skip)</option>',
+      ...excelHeaders.map(h => `<option value="${h.replace(/"/g,'&quot;')}" ${detected[f.key]===h?'selected':''}>${h}</option>`)
+    ].join('');
+    const selCol = detected[f.key];
+    const colIdx = selCol ? excelHeaders.indexOf(selCol) : -1;
+    const sample = colIdx >= 0 && sampleRows[0] ? sampleRows.map(r => r[colIdx]).filter(Boolean).slice(0,2).join(', ') : '—';
+    return `<tr>
+      <td>${f.required ? '<span class="text-danger">*</span> ' : ''}<b>${f.label}</b></td>
+      <td><select class="form-select form-select-sm" id="map_${f.key}" onchange="updateSample('${f.key}')">${opts}</select></td>
+      <td class="text-muted" id="smp_${f.key}" style="font-size:11px">${sample}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('step1').classList.add('d-none');
+  document.getElementById('step2').classList.remove('d-none');
+  document.getElementById('btnParse').classList.add('d-none');
+  document.getElementById('btnImport').classList.remove('d-none');
+}
+
+function updateSample(field) {
+  const sel = document.getElementById(`map_${field}`).value;
+  const idx = excelHeaders.indexOf(sel);
+  const s   = idx >= 0 ? sampleRows.map(r => r[idx]).filter(Boolean).slice(0,2).join(', ') : '—';
+  document.getElementById(`smp_${field}`).textContent = s || '—';
+}
+
+async function doImport() {
+  const mapping = {};
+  MACHINE_FIELDS.forEach(f => {
+    const v = document.getElementById(`map_${f.key}`)?.value;
+    if (v) mapping[f.key] = v;
+  });
+  if (!mapping.machine_no) return alert('Machine No. column mapping is required.');
+
+  const btn = document.getElementById('btnImport');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  const r = await fetch('/sold-machines/import/excel', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ data: importBase64, mapping })
+  });
+  const j = await r.json();
+  btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload me-1"></i>Import';
+  const div = document.getElementById('importResult');
+  div.classList.remove('d-none','alert-success','alert-danger');
+  if (j.ok) {
+    div.classList.add('alert-success');
+    div.innerHTML = `✓ Imported: <strong>${j.inserted}</strong> new, <strong>${j.skipped}</strong> skipped.` +
+      (j.errors?.length ? `<br><small>Errors: ${j.errors.slice(0,3).join('; ')}</small>` : '');
+    setTimeout(() => location.reload(), 2500);
+  } else {
+    div.classList.add('alert-danger');
+    div.textContent = '✗ ' + j.error;
+  }
 }
 </script>
 
