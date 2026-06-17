@@ -194,6 +194,13 @@
         <td class="col-price"><%= calc.trcAmount > 0 ? formatINR(calc.trcAmount) : 'INCLUSIVE' %></td>
       </tr>
 
+      <% if (calc.roundoffApplied) { %>
+      <tr>
+        <td></td><td><strong>Roundoff (Up)</strong></td><td></td>
+        <td class="col-price" style="color:#ff9800; font-weight:bold">+ <%= formatINR(calc.total - (calc.subTotal + calc.trcAmount)) %></td>
+      </tr>
+      <% } %>
+
       <!-- Amount in words -->
       <tr>
         <td colspan="3" style="font-size:11.5px"><strong>Amount : <%= calc.amountWords %>.</strong></td>

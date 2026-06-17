@@ -596,7 +596,9 @@ const defaultSettings = {
   salesperson_name: 'Govind Maan',
   salesperson_phone: '+919690014010',
   rto_default_rate: '6',
-  price_lock_enabled: '1'
+  price_lock_enabled: '1',
+  roundoff_enabled: '1',
+  roundoff_amount: '500'
 };
 
 Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
@@ -646,7 +648,7 @@ function numberToWords(n) {
   return w.trim()+' Rupees Only';
 }
 
-function calcQuotation(q) {
+function calcQuotation(q, settings) {
   const basic = q.basic_price * q.quantity;
   const ins   = (q.transit_insurance || 2000) * q.quantity;
   const base  = basic + ins;
@@ -662,9 +664,16 @@ function calcQuotation(q) {
   const tcs       = q.has_tcs ? Math.round(preTcs * (q.tcs_rate || 1) / 100) : 0;
   const subTotal  = preTcs + tcs;
   const trcAmount = parseFloat(q.trc) || 0;
-  const total     = subTotal + trcAmount;
+  let total       = subTotal + trcAmount;
+
+  // Apply upward roundoff if enabled
+  if (settings && settings.roundoff_enabled === '1') {
+    const roundoffAmount = parseInt(settings.roundoff_amount) || 500;
+    total = Math.ceil(total / roundoffAmount) * roundoffAmount;
+  }
+
   return { basic, transitInsurance: ins, base, cgst, sgst, igst, preTcs, tcs,
-           subTotal, trcAmount, total,
+           subTotal, trcAmount, total, roundoffApplied: total !== (subTotal + trcAmount),
            amountWords: numberToWords(Math.round(total)) };
 }
 

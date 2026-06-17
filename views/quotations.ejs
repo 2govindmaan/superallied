@@ -33,7 +33,7 @@
         </thead>
         <tbody>
           <% quotations.forEach(q => {
-            const calc = calcQuotation(q);
+            const calc = calcQuotation(q, settings);
           %>
           <tr>
             <td><a href="/quotations/<%= q.id %>" class="fw-semibold text-decoration-none text-dark"><%= q.quotation_number %></a></td>

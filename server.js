@@ -260,7 +260,8 @@ app.get('/quotations', requireLogin, (req, res) => {
   if (conds.length) sql += ' WHERE ' + conds.join(' AND ');
   sql += ' ORDER BY qo.created_at DESC';
   const quotations = db.prepare(sql).all(...params);
-  res.render('quotations', { title: 'Quotations', quotations, status: status||'', q: q||'', formatINR, calcQuotation });
+  const s = getSettings();
+  res.render('quotations', { title: 'Quotations', quotations, status: status||'', q: q||'', formatINR, calcQuotation, settings: s });
 });
 
 app.get('/quotations/new', requireLogin, (req, res) => {
@@ -322,7 +323,8 @@ app.get('/quotations/:id', requireLogin, (req, res) => {
     WHERE qo.id = ?`).get(req.params.id);
   if (!q) return res.redirect('/quotations');
   if (!isAdmin && q.user_id !== req.session.userId) return res.redirect('/quotations');
-  const calc = calcQuotation(q);
+  const s = getSettings();
+  const calc = calcQuotation(q, s);
   const specs = db.prepare('SELECT * FROM machine_specs WHERE machine_id=? ORDER BY display_order').all(q.machine_id);
   res.render('quotation-view', { title: `Quotation ${q.quotation_number}`, q, calc, specs, formatINR });
 });
@@ -385,8 +387,8 @@ app.get('/quotations/:id/pdf', requireLogin, async (req, res) => {
     WHERE qo.id = ?`).get(req.params.id);
   if (!q) return res.status(404).send('Not found');
 
-  const calc = calcQuotation(q);
   const s    = getSettings();
+  const calc = calcQuotation(q, s);
   const specs = db.prepare('SELECT * FROM machine_specs WHERE machine_id=? ORDER BY display_order').all(q.machine_id);
   const html = await new Promise((resolve, reject) => {
     res.app.render('quotation-pdf', { q, calc, specs, settings: s, formatINR, numberToWords, bullLogoB64: BULL_LOGO_B64, paymentQrB64: PAYMENT_QR_B64 }, (err, html) => {

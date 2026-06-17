@@ -40,6 +40,10 @@
               <div class="col-md-6"><label class="form-label">RTO Default Percentage (%)</label><input type="number" name="rto_default_rate" class="form-control" value="<%= s.rto_default_rate || 6 %>" min="0" max="100" step="0.1"></div>
               <div class="col-md-6"><label class="form-label">Price Lock Enabled</label><select name="price_lock_enabled" class="form-select"><option value="1" <%=s.price_lock_enabled==='1'?'selected':''%>>Yes (MRP only)</option><option value="0" <%=s.price_lock_enabled==='0'?'selected':''%>>No (Allow override)</option></select></div>
               <div class="col-12 alert alert-info small py-2 mb-0"><i class="bi bi-info-circle me-1"></i><strong>Price Lock:</strong> When enabled, sales staff can only quote at MRP. Admin users can always override prices.</div>
+              <hr>
+              <div class="col-md-6"><label class="form-label">Roundoff Enabled</label><select name="roundoff_enabled" class="form-select"><option value="1" <%=s.roundoff_enabled==='1'?'selected':''%>>Yes (Round up to nearest)</option><option value="0" <%=s.roundoff_enabled==='0'?'selected':''%>>No (Exact amount)</option></select></div>
+              <div class="col-md-6"><label class="form-label">Roundoff Amount (₹)</label><input type="number" name="roundoff_amount" class="form-control" value="<%= s.roundoff_amount || 500 %>" min="100" step="100"></div>
+              <div class="col-12 alert alert-primary small py-2 mb-0"><i class="bi bi-info-circle me-1"></i><strong>Roundoff:</strong> Quotation total will be rounded UP to the nearest amount (e.g., 500, 1000). Example: ₹45,230 → ₹45,500 (with roundoff 500).</div>
               <div class="col-12"><button class="btn btn-danger px-4">Save Settings</button></div>
             </div>
           </form>
