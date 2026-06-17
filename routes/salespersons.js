@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
       COUNT(DISTINCT sq.id)  AS spare_count,
       COALESCE(SUM(sq.grand_total),0) AS spare_value,
       COUNT(DISTINCT q.id)   AS machine_count,
-      COALESCE(SUM(q.total_price),0)  AS machine_value
+      COALESCE(SUM(q.basic_price),0)  AS machine_value
     FROM salespersons sp
     LEFT JOIN spare_quotations sq ON sq.salesperson_id = sp.id
     LEFT JOIN quotations q        ON q.salesperson_id  = sp.id
@@ -73,7 +73,7 @@ router.get('/reports/summary', (req, res) => {
       COALESCE(sp.name, q.salesperson_name, 'Unassigned') AS sp_name,
       sp.id AS sp_id,
       COUNT(q.id) AS total_count,
-      COALESCE(SUM(q.total_price),0) AS total_value,
+      COALESCE(SUM(q.basic_price),0) AS total_value,
       SUM(CASE WHEN q.status='draft'     THEN 1 ELSE 0 END) AS draft_count,
       SUM(CASE WHEN q.status='sent'      THEN 1 ELSE 0 END) AS sent_count,
       SUM(CASE WHEN q.status='confirmed' THEN 1 ELSE 0 END) AS confirmed_count
@@ -142,7 +142,7 @@ router.get('/:id', (req, res) => {
 
   const machineTotals = machineQuotes.reduce((acc, q) => {
     acc.count++;
-    acc.value += q.total_price || 0;
+    acc.value += q.basic_price || 0;
     acc[q.status] = (acc[q.status] || 0) + 1;
     return acc;
   }, { count: 0, value: 0 });
