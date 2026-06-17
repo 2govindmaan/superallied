@@ -81,6 +81,16 @@
                 <input type="number" name="transit_insurance" id="transit_insurance" class="form-control" value="<%= quotation?.transit_insurance || 2000 %>" oninput="calcTotals()">
               </div>
             </div>
+            <div class="row mt-3 g-2">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Tyre Option</label>
+                <select name="tyre_option" id="tyre_option" class="form-select form-select-sm">
+                  <option value="IT" <%= quotation?.tyre_option==='IT' || !quotation ? 'selected' : '' %>>IT Tyre - 16.09x28</option>
+                  <option value="HD" <%= quotation?.tyre_option==='HD' ? 'selected' : '' %>>HD Tyre - 14.00x25</option>
+                </select>
+                <small class="text-muted">Select rear tyre type</small>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -123,7 +123,7 @@
             <% if(q.rear_axle && q.rear_axle !== 'N/A') { %><li><%= q.rear_axle %></li><% } %>
             <% if(q.pump)         { %><li><%= q.pump %></li><% } %>
             <% if(q.front_tyre)   { %><li>Front Tyre - <%= q.front_tyre %></li><% } %>
-            <% if(q.rear_tyre)    { %><li>Rear Tyre - <%= q.rear_tyre %></li><% } %>
+            <% if(q.tyre_option === 'HD') { %><li>Rear Tyre - HD 14.00x25</li><% } else if(q.tyre_option === 'IT') { %><li>Rear Tyre - IT 16.09x28</li><% } else if(q.rear_tyre) { %><li>Rear Tyre - <%= q.rear_tyre %></li><% } %>
             <% if(q.battery)      { %><li><%= q.battery %></li><% } %>
             <% if(q.weight)       { %><li><%= q.weight %> - Weight</li><% } %>
             <% if(q.bucket)       { %><li><%= q.bucket %></li><% } %>
