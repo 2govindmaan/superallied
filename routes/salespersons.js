@@ -124,7 +124,7 @@ router.get('/:id', (req, res) => {
 
   // Machine quotations
   const machineQuotes = db.prepare(`
-    SELECT q.*, c.name AS customer_name, m.model AS machine_model
+    SELECT q.*, c.name AS customer_name, m.display_name AS machine_model
     FROM quotations q
     LEFT JOIN customers c ON c.id=q.customer_id
     LEFT JOIN machines m  ON m.id=q.machine_id
