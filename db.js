@@ -109,6 +109,11 @@ try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_name TEXT DEFAULT '
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_phone TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE quotations ADD COLUMN tyre_option TEXT DEFAULT 'IT'"); } catch(e) {}
 
+// Spare quotation columns
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN show_discount INTEGER DEFAULT 0"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN quotation_date DATE"); } catch(e) {}
+try { db.exec("ALTER TABLE quotations ADD COLUMN tyre_option TEXT DEFAULT 'IT'"); } catch(e) {}
+
 // Employee profile columns on users
 const userCols = [
   "ALTER TABLE users ADD COLUMN employee_code TEXT DEFAULT ''",

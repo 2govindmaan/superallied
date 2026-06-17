@@ -80,15 +80,17 @@ router.post('/', (req, res) => {
   const info = db.prepare(`INSERT INTO spare_quotations
     (quotation_no,serial_number,financial_year,sold_machine_id,machine_no,customer_name,
      customer_address,customer_gstin,contact_person,mobile,place_of_supply,
-     tax_mode,salesperson,validity_days,remarks,terms,status,
+     tax_mode,salesperson,validity_days,remarks,terms,status,show_discount,quotation_date,
      total_basic,total_gst,grand_total,created_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(quotationNo, serialNumber, financialYear, soldMachineId,
          f.machine_no||'', f.customer_name.trim(), f.customer_address||'',
          f.customer_gstin||'', f.contact_person||'', f.mobile||'',
          f.place_of_supply||'', f.tax_mode||'CGST_SGST',
          f.salesperson||'', +f.validity_days||30,
          f.remarks||'', f.terms||'', 'draft',
+         f.show_discount === 'on' ? 1 : 0,
+         f.quotation_date || new Date().toISOString().slice(0,10),
          totalBasic, totalGst, grandTotal, req.session.userId);
 
   const qid = info.lastInsertRowid;
@@ -157,12 +159,14 @@ router.post('/:id/update', (req, res) => {
   db.prepare(`UPDATE spare_quotations SET
     sold_machine_id=?,machine_no=?,customer_name=?,customer_address=?,customer_gstin=?,
     contact_person=?,mobile=?,place_of_supply=?,tax_mode=?,salesperson=?,
-    validity_days=?,remarks=?,terms=?,status=?,total_basic=?,total_gst=?,grand_total=?,
-    updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+    validity_days=?,remarks=?,terms=?,status=?,show_discount=?,quotation_date=?,
+    total_basic=?,total_gst=?,grand_total=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
     .run(soldMachineId, f.machine_no||'', f.customer_name||'', f.customer_address||'',
          f.customer_gstin||'', f.contact_person||'', f.mobile||'',
          f.place_of_supply||'', f.tax_mode||'CGST_SGST', f.salesperson||'',
          +f.validity_days||30, f.remarks||'', f.terms||'', f.status||'draft',
+         f.show_discount === 'on' ? 1 : 0,
+         f.quotation_date || new Date().toISOString().slice(0,10),
          totalBasic, totalGst, grandTotal, req.params.id);
 
   // Replace items
@@ -240,10 +244,11 @@ router.get('/:id/pdf', async (req, res) => {
   const qrData = `${s.company_name || 'Super Allied'}\nQuotation: ${q.quotation_no}\nTotal: ₹${q.grand_total}`;
   const qrDataUrl = await QRCode.toDataURL(qrData, { width: 100, margin: 1 });
 
+  const isAdmin = res.locals.user?.role === 'admin';
   const html = await new Promise((resolve, reject) =>
     res.app.render('spare-quotations/pdf', {
       q, items, settings: s, formatINR, numberToWords,
-      logoB64, qrDataUrl
+      logoB64, qrDataUrl, isAdmin
     }, (err, h) => err ? reject(err) : resolve(h)));
 
   try {

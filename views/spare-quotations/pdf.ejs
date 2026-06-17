@@ -4,169 +4,270 @@
 <meta charset="UTF-8">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1a1a; background: #fff; }
-  .page { width: 210mm; min-height: 297mm; padding: 12mm 14mm; position: relative; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #c00; padding-bottom: 10px; margin-bottom: 10px; }
-  .company h1 { font-size: 22px; font-weight: 900; color: #c00; letter-spacing: 1px; }
-  .company p { font-size: 10px; color: #555; margin-top: 2px; }
-  .logo-wrap img { height: 55px; }
-  .qr-wrap img { height: 60px; }
-  .doc-title { text-align: center; background: #c00; color: #fff; padding: 5px; font-size: 14px; font-weight: 700; letter-spacing: 2px; margin-bottom: 10px; }
-  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  .meta-box { border: 1px solid #ddd; padding: 6px 8px; border-radius: 3px; }
-  .meta-box h4 { font-size: 9px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
-  .meta-box dl { display: grid; grid-template-columns: 110px 1fr; font-size: 10px; gap: 2px 4px; }
-  .meta-box dt { color: #666; }
-  .meta-box dd { font-weight: 600; }
-  table.items { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  table.items thead th { background: #2c3e50; color: #fff; padding: 5px 4px; font-size: 9px; text-transform: uppercase; }
-  table.items tbody tr:nth-child(even) { background: #f9f9f9; }
-  table.items tbody td { padding: 4px; font-size: 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
-  table.items tfoot td { border-top: 2px solid #2c3e50; padding: 4px; font-size: 10px; }
-  .text-right { text-align: right; }
-  .text-center { text-align: center; }
-  .totals-section { display: flex; justify-content: flex-end; }
-  .totals-table { width: 240px; border-collapse: collapse; }
-  .totals-table td { padding: 3px 6px; font-size: 10px; }
-  .totals-table .grand { background: #c00; color: #fff; font-size: 12px; font-weight: 700; }
-  .amount-words { background: #f5f5f5; border-left: 3px solid #c00; padding: 5px 8px; margin: 8px 0; font-size: 10px; }
-  .terms { font-size: 9px; color: #555; margin-top: 8px; }
-  .terms h4 { font-size: 10px; font-weight: 700; margin-bottom: 3px; }
-  .footer { position: absolute; bottom: 12mm; left: 14mm; right: 14mm; border-top: 1px solid #ddd; padding-top: 6px; display: flex; justify-content: space-between; font-size: 9px; color: #888; }
-  .sig-box { text-align: center; border-top: 1px solid #555; padding-top: 3px; margin-top: 20px; font-size: 9px; }
-  .badge-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
-  .code { font-family: 'Courier New', monospace; }
+  body { font-family: 'Arial', sans-serif; font-size: 10.5px; color: #1a1a1a; background: #fff; }
+  .page { width: 210mm; min-height: 297mm; padding: 10mm 12mm 22mm 12mm; position: relative; }
+
+  /* ── Header ── */
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo img { height: 56px; }
+  .company-name { font-size: 20px; font-weight: 900; color: #b91c1c; letter-spacing: 0.5px; line-height: 1.1; }
+  .company-sub  { font-size: 9px; color: #666; margin-top: 2px; }
+  .company-addr { font-size: 9px; color: #555; margin-top: 3px; line-height: 1.5; }
+  .header-right { text-align: right; }
+  .header-right .gstin-badge { display: inline-block; border: 1px solid #b91c1c; border-radius: 3px;
+    padding: 2px 8px; font-size: 9px; color: #b91c1c; font-weight: 700; margin-bottom: 4px; }
+
+  /* ── Divider + title ── */
+  .title-bar { background: #b91c1c; color: #fff; text-align: center; padding: 5px 0;
+    font-size: 13px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase;
+    margin-bottom: 10px; }
+
+  /* ── Info grid ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .info-box { border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden; }
+  .info-box-head { background: #f3f4f6; padding: 4px 8px; font-size: 8.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
+  .info-box-body { padding: 6px 8px; }
+  .info-row { display: flex; gap: 4px; margin-bottom: 3px; font-size: 9.5px; }
+  .info-label { color: #6b7280; min-width: 100px; flex-shrink: 0; }
+  .info-value { font-weight: 600; color: #111; }
+  .qno { font-size: 13px; font-weight: 900; color: #b91c1c; }
+  .date-val { font-weight: 700; color: #111; }
+
+  /* ── Items table ── */
+  table.items { width: 100%; border-collapse: collapse; margin-bottom: 0; font-size: 9.5px; }
+  table.items thead tr { background: #1e293b; color: #fff; }
+  table.items thead th { padding: 5px 5px; font-weight: 700; font-size: 8.5px;
+    text-transform: uppercase; letter-spacing: 0.4px; border: none; }
+  table.items tbody tr { border-bottom: 1px solid #f1f5f9; }
+  table.items tbody tr:nth-child(even) { background: #f8fafc; }
+  table.items tbody td { padding: 5px 5px; vertical-align: middle; }
+  table.items tbody .desc { font-weight: 600; font-size: 9.5px; }
+  table.items tbody .part-no { font-family: 'Courier New', monospace; font-size: 8.5px; color: #555; }
+  .tr { text-align: right; }
+  .tc { text-align: center; }
+
+  /* ── Totals ── */
+  .bottom-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px; }
+  .totals-wrap { min-width: 230px; }
+  .totals-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+  .totals-table td { padding: 3px 6px; border-bottom: 1px solid #f1f5f9; }
+  .totals-table .lbl { color: #6b7280; }
+  .totals-table .val { text-align: right; font-weight: 600; }
+  .totals-table .grand-row td { background: #b91c1c; color: #fff; font-weight: 800;
+    font-size: 11px; padding: 5px 6px; border: none; }
+  .totals-table .grand-row .val { text-align: right; }
+
+  /* ── Amount words ── */
+  .amount-words { background: #fef2f2; border-left: 3px solid #b91c1c; padding: 5px 8px;
+    font-size: 9px; margin: 8px 0; color: #374151; }
+  .amount-words strong { font-weight: 700; color: #1a1a1a; }
+
+  /* ── Bank / Terms / Sig ── */
+  .bank-box { border: 1px solid #e5e7eb; border-radius: 4px; padding: 5px 8px; font-size: 9px;
+    margin-bottom: 6px; color: #374151; line-height: 1.6; }
+  .bank-box strong { font-weight: 700; color: #111; }
+  .terms-box { font-size: 8.5px; color: #6b7280; margin-bottom: 8px; }
+  .terms-box h5 { font-size: 9px; font-weight: 700; color: #374151; margin-bottom: 3px; }
+  .sig-section { display: flex; justify-content: flex-end; margin-top: 10px; }
+  .sig-box { text-align: center; width: 180px; }
+  .sig-line { border-top: 1px solid #374151; padding-top: 4px; font-size: 9px; color: #555; margin-top: 28px; }
+
+  /* ── Admin watermark (NDP info strip) ── */
+  .ndp-strip { background: #fef9c3; border: 1px dashed #ca8a04; border-radius: 3px;
+    padding: 4px 8px; font-size: 8.5px; color: #713f12; margin-bottom: 6px; }
+  .ndp-strip strong { color: #92400e; }
+
+  /* ── Footer ── */
+  .footer { position: absolute; bottom: 8mm; left: 12mm; right: 12mm;
+    border-top: 1px solid #e5e7eb; padding-top: 4px;
+    display: flex; justify-content: space-between; font-size: 8px; color: #9ca3af; }
+
+  .mono { font-family: 'Courier New', monospace; }
+  .red  { color: #b91c1c; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- Header -->
+  <%
+    // Helpers
+    const fmtDate = (d) => {
+      if (!d) return '—';
+      const dt = new Date(d);
+      if (isNaN(dt)) return d;
+      return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const qDate = q.quotation_date || q.created_at;
+    const validDate = new Date(qDate);
+    validDate.setDate(validDate.getDate() + (q.validity_days || 30));
+    const showDisc = q.show_discount === 1;
+    // Column count for colspan calculations
+    const colCount = showDisc ? 10 : 8;
+  %>
+
+  <!-- HEADER -->
   <div class="header">
-    <div class="company">
-      <% if (logoB64) { %><img src="<%= logoB64 %>" style="height:50px;margin-bottom:4px"><br><% } %>
-      <h1><%= settings.company_name || 'SUPER ALLIED' %></h1>
-      <p>Authorised Dealer — <%= settings.dealer_of || 'Bull Construction Equipment Pvt. Ltd.' %></p>
-      <p style="margin-top:2px"><%= settings.company_address || '' %></p>
-      <p style="margin-top:2px">GSTIN: <strong><%= settings.company_gstin || '' %></strong> &nbsp;|&nbsp; Contact: <%= settings.contact_phone || '' %></p>
+    <div class="header-left">
+      <% if (logoB64) { %><div class="logo"><img src="<%= logoB64 %>"></div><% } %>
+      <div>
+        <div class="company-name"><%= settings.company_name || 'SUPER ALLIED' %></div>
+        <div class="company-sub">Authorised Dealer — <%= settings.dealer_of || 'Bull Construction Equipment Pvt. Ltd.' %></div>
+        <div class="company-addr"><%= settings.company_address || '' %></div>
+      </div>
     </div>
-    <div style="text-align:right">
-      <% if (qrDataUrl) { %><img src="<%= qrDataUrl %>" style="height:60px"><% } %>
-    </div>
-  </div>
-
-  <div class="doc-title">SPARE PARTS QUOTATION</div>
-
-  <!-- Meta -->
-  <div class="meta-grid">
-    <div class="meta-box">
-      <h4>Customer Details</h4>
-      <dl>
-        <dt>Customer Name</dt><dd><%= q.customer_name %></dd>
-        <dt>Machine No</dt><dd class="code"><%= q.machine_no || '—' %></dd>
-        <% if (q.contact_person) { %><dt>Contact Person</dt><dd><%= q.contact_person %></dd><% } %>
-        <% if (q.mobile) { %><dt>Mobile</dt><dd><%= q.mobile %></dd><% } %>
-        <% if (q.customer_address) { %><dt>Address</dt><dd><%= q.customer_address %></dd><% } %>
-        <% if (q.customer_gstin) { %><dt>GSTIN</dt><dd class="code"><%= q.customer_gstin %></dd><% } %>
-        <% if (q.place_of_supply) { %><dt>Place of Supply</dt><dd><%= q.place_of_supply %></dd><% } %>
-      </dl>
-    </div>
-    <div class="meta-box">
-      <h4>Quotation Details</h4>
-      <dl>
-        <dt>Quotation No</dt><dd class="code" style="color:#c00;font-weight:900"><%= q.quotation_no %></dd>
-        <dt>Date</dt><dd><%= new Date(q.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></dd>
-        <dt>Valid Until</dt><dd>
-          <% const validDate = new Date(q.created_at); validDate.setDate(validDate.getDate() + (q.validity_days||30)); %>
-          <%= validDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
-        </dd>
-        <dt>Tax Mode</dt><dd><%= q.tax_mode === 'IGST' ? 'IGST' : 'CGST + SGST' %></dd>
-        <% if (q.salesperson) { %><dt>Salesperson</dt><dd><%= q.salesperson %></dd><% } %>
-      </dl>
+    <div class="header-right">
+      <% if (qrDataUrl) { %><div><img src="<%= qrDataUrl %>" style="height:58px"></div><% } %>
+      <div class="gstin-badge">GSTIN: <%= settings.company_gstin || '' %></div><br>
+      <div style="font-size:8.5px;color:#555">Ph: <%= settings.contact_phone || '' %></div>
     </div>
   </div>
 
-  <!-- Items Table -->
+  <div class="title-bar">Spare Parts Quotation</div>
+
+  <!-- INFO GRID -->
+  <div class="info-grid">
+    <!-- Customer -->
+    <div class="info-box">
+      <div class="info-box-head">Bill To / Customer</div>
+      <div class="info-box-body">
+        <div class="info-row"><span class="info-label">Name</span><span class="info-value"><%= q.customer_name %></span></div>
+        <% if (q.machine_no) { %><div class="info-row"><span class="info-label">Machine No</span><span class="info-value mono"><%= q.machine_no %></span></div><% } %>
+        <% if (q.contact_person) { %><div class="info-row"><span class="info-label">Contact Person</span><span class="info-value"><%= q.contact_person %></span></div><% } %>
+        <% if (q.mobile) { %><div class="info-row"><span class="info-label">Mobile</span><span class="info-value"><%= q.mobile %></span></div><% } %>
+        <% if (q.customer_address) { %><div class="info-row"><span class="info-label">Address</span><span class="info-value"><%= q.customer_address %></span></div><% } %>
+        <% if (q.customer_gstin) { %><div class="info-row"><span class="info-label">GSTIN</span><span class="info-value mono"><%= q.customer_gstin %></span></div><% } %>
+        <% if (q.place_of_supply) { %><div class="info-row"><span class="info-label">Place of Supply</span><span class="info-value"><%= q.place_of_supply %></span></div><% } %>
+      </div>
+    </div>
+    <!-- Quotation details -->
+    <div class="info-box">
+      <div class="info-box-head">Quotation Details</div>
+      <div class="info-box-body">
+        <div class="info-row"><span class="info-label">Quotation No</span><span class="info-value qno"><%= q.quotation_no %></span></div>
+        <div class="info-row"><span class="info-label">Date</span><span class="info-value date-val"><%= fmtDate(qDate) %></span></div>
+        <div class="info-row"><span class="info-label">Valid Until</span><span class="info-value date-val"><%= fmtDate(validDate) %></span></div>
+        <div class="info-row"><span class="info-label">Tax Mode</span><span class="info-value"><%= q.tax_mode === 'IGST' ? 'IGST' : 'CGST + SGST' %></span></div>
+        <% if (q.salesperson) { %><div class="info-row"><span class="info-label">Prepared By</span><span class="info-value"><%= q.salesperson %></span></div><% } %>
+        <% if (q.remarks) { %><div class="info-row"><span class="info-label">Remarks</span><span class="info-value"><%= q.remarks %></span></div><% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITEMS TABLE -->
   <table class="items">
     <thead>
       <tr>
-        <th class="text-center">#</th>
-        <th>Part No</th>
+        <th class="tc" style="width:22px">#</th>
+        <th style="width:80px">Part No</th>
         <th>Description</th>
-        <th class="text-center">HSN</th>
-        <th class="text-center">Qty</th>
-        <th class="text-right">Basic Rate</th>
-        <th class="text-right">Disc%</th>
-        <th class="text-center">Tax%</th>
-        <th class="text-right">Tax Amt</th>
-        <th class="text-right">Line Total</th>
+        <th class="tc" style="width:60px">HSN</th>
+        <th class="tc" style="width:32px">Qty</th>
+        <th class="tr" style="width:72px">Rate</th>
+        <% if (showDisc) { %>
+        <th class="tr" style="width:45px">Disc%</th>
+        <th class="tr" style="width:58px">Disc Amt</th>
+        <% } %>
+        <th class="tc" style="width:38px">Tax%</th>
+        <th class="tr" style="width:68px">Tax Amt</th>
+        <th class="tr" style="width:78px">Amount</th>
       </tr>
     </thead>
     <tbody>
       <% items.forEach((it, i) => { %>
       <tr>
-        <td class="text-center text-muted"><%= i+1 %></td>
-        <td class="code" style="font-size:9px"><%= it.part_no || '—' %></td>
-        <td style="font-weight:600"><%= it.description %></td>
-        <td class="text-center"><%= it.hsn || '—' %></td>
-        <td class="text-center"><%= it.qty %></td>
-        <td class="text-right">₹<%= formatINR(it.basic_rate) %></td>
-        <td class="text-right"><%= it.discount_percent ? it.discount_percent + '%' : '—' %></td>
-        <td class="text-center"><%= it.tax_rate %>%</td>
-        <td class="text-right">₹<%= formatINR(it.tax_amount) %></td>
-        <td class="text-right" style="font-weight:700">₹<%= formatINR(it.line_total) %></td>
+        <td class="tc" style="color:#9ca3af"><%= i+1 %></td>
+        <td class="part-no"><%= it.part_no || '—' %></td>
+        <td class="desc"><%= it.description %></td>
+        <td class="tc" style="font-size:8.5px"><%= it.hsn || '—' %></td>
+        <td class="tc"><%= it.qty %></td>
+        <td class="tr">₹<%= formatINR(it.basic_rate) %></td>
+        <% if (showDisc) { %>
+        <td class="tr"><%= it.discount_percent ? it.discount_percent + '%' : '—' %></td>
+        <td class="tr"><%= it.discount_amount ? '₹'+formatINR(it.discount_amount) : '—' %></td>
+        <% } %>
+        <td class="tc"><%= it.tax_rate %>%</td>
+        <td class="tr">₹<%= formatINR(it.tax_amount) %></td>
+        <td class="tr" style="font-weight:700">₹<%= formatINR(it.line_total) %></td>
       </tr>
       <% }) %>
     </tbody>
+    <tfoot>
+      <tr style="background:#f8fafc">
+        <td colspan="<%= colCount - 1 %>" class="tr" style="padding:5px;font-size:9px;color:#6b7280;border-top:2px solid #1e293b"></td>
+        <td class="tr" style="padding:5px;border-top:2px solid #1e293b;font-weight:700">
+          ₹<%= formatINR(q.grand_total) %>
+        </td>
+      </tr>
+    </tfoot>
   </table>
 
-  <!-- Totals -->
-  <div class="totals-section">
-    <table class="totals-table">
-      <tr><td>Total Basic</td><td class="text-right">₹<%= formatINR(q.total_basic) %></td></tr>
-      <% if (q.tax_mode === 'IGST') { %>
-      <tr><td>IGST</td><td class="text-right">₹<%= formatINR(q.total_gst) %></td></tr>
-      <% } else { %>
-      <tr><td>CGST</td><td class="text-right">₹<%= formatINR(q.total_gst/2) %></td></tr>
-      <tr><td>SGST</td><td class="text-right">₹<%= formatINR(q.total_gst/2) %></td></tr>
-      <% } %>
-      <tr class="grand"><td>GRAND TOTAL</td><td class="text-right">₹<%= formatINR(q.grand_total) %></td></tr>
-    </table>
+  <!-- TOTALS + AMOUNT WORDS -->
+  <div class="bottom-section">
+    <div style="flex:1"></div>
+    <div class="totals-wrap">
+      <table class="totals-table">
+        <tr><td class="lbl">Total (Basic)</td><td class="val">₹<%= formatINR(q.total_basic) %></td></tr>
+        <% if (q.tax_mode === 'IGST') { %>
+        <tr><td class="lbl">IGST</td><td class="val">₹<%= formatINR(q.total_gst) %></td></tr>
+        <% } else { %>
+        <tr><td class="lbl">CGST</td><td class="val">₹<%= formatINR(q.total_gst / 2) %></td></tr>
+        <tr><td class="lbl">SGST</td><td class="val">₹<%= formatINR(q.total_gst / 2) %></td></tr>
+        <% } %>
+        <tr class="grand-row"><td class="lbl">Grand Total</td><td class="val">₹<%= formatINR(q.grand_total) %></td></tr>
+      </table>
+    </div>
   </div>
 
   <div class="amount-words">
-    Amount in Words: <strong><%= numberToWords(Math.round(q.grand_total)) %></strong>
+    Rupees in words: <strong><%= numberToWords(Math.round(q.grand_total)) %></strong>
   </div>
 
-  <!-- Bank Details -->
+  <!-- ADMIN-ONLY NDP STRIP -->
+  <% if (isAdmin) { %>
+  <div class="ndp-strip">
+    <strong>⚑ Admin View — NDP Reference (not printed for customer):</strong>
+    <% items.forEach((it, i) => { %>
+      &nbsp;<strong>#<%= i+1 %>:</strong> NDP ₹<%= formatINR(it.basic_rate) %>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <!-- BANK DETAILS -->
   <% if (settings.bank_account) { %>
-  <div style="border:1px solid #ddd;padding:5px 8px;font-size:9px;margin-bottom:6px;border-radius:3px">
-    <strong>Bank Details:</strong> <%= settings.bank_beneficiary %> &nbsp;|&nbsp;
-    A/C: <span class="code"><%= settings.bank_account %></span> &nbsp;|&nbsp;
-    IFSC: <span class="code"><%= settings.bank_ifsc %></span> &nbsp;|&nbsp;
+  <div class="bank-box">
+    <strong>Bank Details:</strong> &nbsp;
+    <%= settings.bank_beneficiary %> &nbsp;|&nbsp;
+    A/C: <span class="mono"><strong><%= settings.bank_account %></strong></span> &nbsp;|&nbsp;
+    IFSC: <span class="mono"><strong><%= settings.bank_ifsc %></strong></span> &nbsp;|&nbsp;
     Branch: <%= settings.bank_branch %>
   </div>
   <% } %>
 
-  <!-- Terms -->
+  <!-- TERMS -->
   <% if (q.terms) { %>
-  <div class="terms">
-    <h4>Terms & Conditions</h4>
+  <div class="terms-box">
+    <h5>Terms &amp; Conditions</h5>
     <div style="white-space:pre-line"><%= q.terms %></div>
   </div>
   <% } %>
 
-  <!-- Signature -->
-  <div style="display:flex;justify-content:flex-end;margin-top:16px">
-    <div class="sig-box" style="width:180px">
-      For <%= settings.company_name || 'Super Allied' %><br>
-      Authorised Signatory
+  <!-- SIGNATURE -->
+  <div class="sig-section">
+    <div class="sig-box">
+      <div class="sig-line">
+        For <strong><%= settings.company_name || 'Super Allied' %></strong><br>
+        Authorised Signatory
+      </div>
     </div>
   </div>
 
+  <!-- FOOTER -->
   <div class="footer">
-    <span><%= settings.company_name %> | <%= settings.company_address %></span>
-    <span>This is a computer generated quotation — no signature required</span>
+    <span><%= settings.company_name %> &nbsp;|&nbsp; <%= settings.company_address %></span>
+    <span>Computer generated — no signature required</span>
   </div>
+
 </div>
 </body></html>

@@ -76,6 +76,20 @@
                 <input name="salesperson" class="form-control form-control-sm"
                   value="<%= quotation?.salesperson || defaultSalesperson || '' %>">
               </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Quotation Date</label>
+                <input type="date" name="quotation_date" class="form-control form-control-sm"
+                  value="<%= quotation?.quotation_date || new Date().toISOString().slice(0,10) %>">
+              </div>
+              <div class="col-12 d-flex align-items-center gap-3 pt-1">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" name="show_discount" id="showDiscountToggle" role="switch"
+                    <%= (quotation?.show_discount === 1) ? 'checked' : '' %>>
+                  <label class="form-check-label small" for="showDiscountToggle">
+                    Show discount column in PDF
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -116,9 +130,12 @@
               </div>
             </div>
             <div id="selectedPartInfo" class="mt-2 p-2 bg-light rounded small d-none">
-              <strong id="selPartDesc"></strong> &nbsp;|&nbsp; SAP: <span id="selPartSap"></span>
+              <strong id="selPartDesc"></strong>
+              &nbsp;|&nbsp; SAP: <span id="selPartSap"></span>
               &nbsp;|&nbsp; MRP Basic: ₹<span id="selPartMrp"></span>
-              &nbsp;|&nbsp; NDP: ₹<span id="selPartNdp"></span>
+              <% if (user && user.role === 'admin') { %>
+              &nbsp;|&nbsp; <span class="text-warning fw-semibold">NDP: ₹<span id="selPartNdp"></span></span>
+              <% } %>
               &nbsp;|&nbsp; Tax: <span id="selPartTax"></span>%
             </div>
           </div>
