@@ -176,17 +176,29 @@
           <div class="card-header bg-white fw-semibold">Salesperson (shown in PDF footer)</div>
           <div class="card-body">
             <div class="row g-2">
-              <div class="col-md-7">
-                <label class="form-label small">Name</label>
+              <div class="col-md-6">
+                <label class="form-label small">Select Salesperson</label>
+                <select name="salesperson_id" class="form-select">
+                  <option value="">— Select —</option>
+                  <% (salespersons||[]).forEach(sp => { %>
+                  <option value="<%= sp.id %>"
+                    <%= String(quotation?.salesperson_id)===String(sp.id)?'selected':'' %>>
+                    <%= sp.name %>
+                  </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Name (manual override)</label>
                 <input type="text" name="salesperson_name" class="form-control"
                        value="<%= quotation?.salesperson_name || defaultSalesperson %>"
-                       placeholder="Salesperson full name">
+                       placeholder="Or type manually">
               </div>
-              <div class="col-md-5">
+              <div class="col-md-3">
                 <label class="form-label small">Phone</label>
                 <input type="text" name="salesperson_phone" class="form-control"
                        value="<%= quotation?.salesperson_phone || defaultSalespersonPhone %>"
-                       placeholder="Mobile number">
+                       placeholder="Mobile">
               </div>
             </div>
           </div>

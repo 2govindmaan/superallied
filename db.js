@@ -112,6 +112,10 @@ try { db.exec("ALTER TABLE quotations ADD COLUMN tyre_option TEXT DEFAULT 'IT'")
 // Spare quotation columns
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN show_discount INTEGER DEFAULT 0"); } catch(e) {}
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN quotation_date DATE"); } catch(e) {}
+try { db.exec("ALTER TABLE spare_quotations ADD COLUMN salesperson_id INTEGER REFERENCES salespersons(id)"); } catch(e) {}
+
+// Machine quotation salesperson link
+try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_id INTEGER REFERENCES salespersons(id)"); } catch(e) {}
 try { db.exec("ALTER TABLE quotations ADD COLUMN tyre_option TEXT DEFAULT 'IT'"); } catch(e) {}
 
 // Employee profile columns on users
@@ -603,7 +607,13 @@ const defaultSettings = {
   rto_default_rate: '6',
   price_lock_enabled: '1',
   roundoff_enabled: '1',
-  roundoff_amount: '500'
+  roundoff_amount: '500',
+  company_email: '',
+  company_udyam: '',
+  company_phone_sales: '',
+  company_phone_service: '',
+  company_state: 'Uttar Pradesh',
+  company_state_code: '09'
 };
 
 Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
@@ -804,6 +814,19 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
   CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity, entity_id);
+
+  CREATE TABLE IF NOT EXISTS salespersons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT DEFAULT '',
+    email TEXT DEFAULT '',
+    territory TEXT DEFAULT '',
+    target_monthly REAL DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    notes TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 function nextSpareQuotationNumber() {

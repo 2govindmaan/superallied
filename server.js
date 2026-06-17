@@ -25,6 +25,7 @@ const leadsRoutes           = require('./routes/leads');
 const soldMachinesRoutes    = require('./routes/sold-machines');
 const sparePartsRoutes      = require('./routes/spare-parts');
 const spareQuotationsRoutes = require('./routes/spare-quotations');
+const salespersonsRoutes    = require('./routes/salespersons');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -265,11 +266,12 @@ app.get('/quotations', requireLogin, (req, res) => {
 });
 
 app.get('/quotations/new', requireLogin, (req, res) => {
-  const machines  = db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY model_series, display_name').all();
-  const customers = db.prepare('SELECT * FROM customers ORDER BY name').all();
-  const prefill   = req.query.customer_id || '';
-  const s         = getSettings();
-  res.render('quotation-form', { title: 'New Quotation', quotation: null, machines, customers, prefill, formatINR,
+  const machines     = db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY model_series, display_name').all();
+  const customers    = db.prepare('SELECT * FROM customers ORDER BY name').all();
+  const salespersons = db.prepare('SELECT id,name FROM salespersons WHERE active=1 ORDER BY name').all();
+  const prefill      = req.query.customer_id || '';
+  const s            = getSettings();
+  res.render('quotation-form', { title: 'New Quotation', quotation: null, machines, customers, salespersons, prefill, formatINR,
     defaultSalesperson: s.contact_name || '', defaultSalespersonPhone: s.contact_phone || '' });
 });
 
@@ -286,12 +288,16 @@ app.post('/quotations', requireLogin, (req, res) => {
     return res.redirect('/quotations/new');
   }
 
+  const spId3 = req.body.salesperson_id ? parseInt(req.body.salesperson_id) : null;
+  let spName3 = salesperson_name || '';
+  if (spId3) { const spR3 = db.prepare('SELECT name,phone FROM salespersons WHERE id=?').get(spId3); if (spR3) { spName3 = spR3.name; } }
+
   const { quotationNumber, financialYear, serialNumber } = nextQuotationNumber();
   db.prepare(`INSERT INTO quotations
     (quotation_number,financial_year,serial_number,customer_id,machine_id,user_id,
      quantity,basic_price,transit_insurance,tax_mode,cgst_rate,sgst_rate,igst_rate,
-     has_tcs,tcs_rate,insurance,trc,hp_with,notes,salesperson_name,salesperson_phone,tyre_option)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+     has_tcs,tcs_rate,insurance,trc,hp_with,notes,salesperson_name,salesperson_phone,tyre_option,salesperson_id)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(
       quotationNumber, financialYear, serialNumber,
       +customer_id, +machine_id, req.session.userId,
@@ -300,8 +306,8 @@ app.post('/quotations', requireLogin, (req, res) => {
       has_tcs === 'on' ? 1 : 0, +tcs_rate||1,
       insurance||'INCLUSIVE', trc||'INCLUSIVE',
       hp_with||'', notes||'',
-      salesperson_name||'', salesperson_phone||'',
-      req.body.tyre_option||'IT'
+      spName3, salesperson_phone||'',
+      req.body.tyre_option||'IT', spId3
     );
   req.session.flash = { success: `Quotation ${quotationNumber} created.` };
   res.redirect('/quotations');
@@ -335,7 +341,8 @@ app.get('/quotations/:id/edit', requireLogin, (req, res) => {
   const machines  = db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY model_series, display_name').all();
   const customers = db.prepare('SELECT * FROM customers ORDER BY name').all();
   const s         = getSettings();
-  res.render('quotation-form', { title: 'Edit Quotation', quotation, machines, customers, prefill: '', formatINR,
+  const salespersons2 = db.prepare('SELECT id,name FROM salespersons WHERE active=1 ORDER BY name').all();
+  res.render('quotation-form', { title: 'Edit Quotation', quotation, machines, customers, salespersons: salespersons2, prefill: '', formatINR,
     defaultSalesperson: s.contact_name || '', defaultSalespersonPhone: s.contact_phone || '' });
 });
 
@@ -590,6 +597,7 @@ app.use('/leads',             requireLogin, leadsRoutes);
 app.use('/sold-machines',     requireLogin, soldMachinesRoutes);
 app.use('/spare-parts',       requireLogin, sparePartsRoutes);
 app.use('/spare-quotations',  requireLogin, spareQuotationsRoutes);
+app.use('/salespersons',       requireLogin, salespersonsRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {

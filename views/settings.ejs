@@ -28,6 +28,12 @@
               <div class="col-12"><label class="form-label">Authorized Dealer Of</label><input type="text" name="dealer_of" class="form-control" value="<%= s.dealer_of %>"></div>
               <div class="col-md-6"><label class="form-label">Contact Name</label><input type="text" name="contact_name" class="form-control" value="<%= s.contact_name %>"></div>
               <div class="col-md-6"><label class="form-label">Contact Phone</label><input type="text" name="contact_phone" class="form-control" value="<%= s.contact_phone %>"></div>
+              <div class="col-md-6"><label class="form-label">Sales Phone</label><input type="text" name="company_phone_sales" class="form-control" value="<%= s.company_phone_sales || '' %>"></div>
+              <div class="col-md-6"><label class="form-label">Service Phone</label><input type="text" name="company_phone_service" class="form-control" value="<%= s.company_phone_service || '' %>"></div>
+              <div class="col-md-6"><label class="form-label">Email</label><input type="text" name="company_email" class="form-control" value="<%= s.company_email || '' %>"></div>
+              <div class="col-md-6"><label class="form-label">UDYAM No.</label><input type="text" name="company_udyam" class="form-control font-monospace" value="<%= s.company_udyam || '' %>" placeholder="UDYAM-UP-XX-XXXXXXX"></div>
+              <div class="col-md-6"><label class="form-label">State</label><input type="text" name="company_state" class="form-control" value="<%= s.company_state || 'Uttar Pradesh' %>"></div>
+              <div class="col-md-6"><label class="form-label">State Code</label><input type="text" name="company_state_code" class="form-control" value="<%= s.company_state_code || '09' %>"></div>
               <hr>
               <div class="col-md-6"><label class="form-label">Bank Beneficiary</label><input type="text" name="bank_beneficiary" class="form-control" value="<%= s.bank_beneficiary %>"></div>
               <div class="col-md-6"><label class="form-label">Bank Account No.</label><input type="text" name="bank_account" class="form-control font-monospace" value="<%= s.bank_account %>"></div>

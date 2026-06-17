@@ -1,0 +1,108 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'salespersons', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-person-badge me-2 text-primary"></i>Salespersons</h4>
+    <% if (user && (user.role === 'admin' || user.role === 'manager')) { %>
+    <a href="/salespersons/new" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Add Salesperson
+    </a>
+    <% } %>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error)   { %><div class="alert alert-danger  alert-dismissible"><%= flash.error   %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <!-- Summary cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="fs-2 fw-bold text-primary"><%= rows.filter(r=>r.active).length %></div>
+        <div class="text-muted small">Active</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="fs-2 fw-bold text-success">₹<%= formatINR(rows.reduce((a,r)=>a+(r.spare_value||0),0)) %></div>
+        <div class="text-muted small">Total Spare Value</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="fs-2 fw-bold text-warning"><%= rows.reduce((a,r)=>a+(r.spare_count||0),0) %></div>
+        <div class="text-muted small">Spare Quotations</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="fs-2 fw-bold text-info"><%= rows.reduce((a,r)=>a+(r.machine_count||0),0) %></div>
+        <div class="text-muted small">Machine Quotations</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">All Salespersons</span>
+      <a href="/salespersons/reports/summary" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-bar-chart me-1"></i>Salesperson Reports
+      </a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Territory</th>
+            <th class="text-center">Spare Quotes</th>
+            <th class="text-end">Spare Value</th>
+            <th class="text-center">Machine Quotes</th>
+            <th class="text-end">Monthly Target</th>
+            <th class="text-center">Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!rows.length) { %>
+          <tr><td colspan="9" class="text-center text-muted py-4">No salespersons yet. <a href="/salespersons/new">Add one.</a></td></tr>
+          <% } %>
+          <% rows.forEach(r => { %>
+          <tr class="<%= r.active ? '' : 'table-secondary' %>">
+            <td>
+              <a href="/salespersons/<%= r.id %>" class="fw-semibold text-decoration-none">
+                <i class="bi bi-person-circle me-1 text-muted"></i><%= r.name %>
+              </a>
+              <% if (!r.active) { %><span class="badge bg-secondary ms-1">Inactive</span><% } %>
+            </td>
+            <td class="text-muted small"><%= r.phone || '—' %></td>
+            <td class="small"><%= r.territory || '—' %></td>
+            <td class="text-center">
+              <span class="badge bg-primary-subtle text-primary"><%= r.spare_count || 0 %></span>
+            </td>
+            <td class="text-end small fw-semibold">₹<%= formatINR(r.spare_value || 0) %></td>
+            <td class="text-center">
+              <span class="badge bg-info-subtle text-info"><%= r.machine_count || 0 %></span>
+            </td>
+            <td class="text-end small">
+              <% if (r.target_monthly) { %>₹<%= formatINR(r.target_monthly) %><% } else { %>—<% } %>
+            </td>
+            <td class="text-center">
+              <span class="badge <%= r.active ? 'bg-success' : 'bg-secondary' %>">
+                <%= r.active ? 'Active' : 'Inactive' %>
+              </span>
+            </td>
+            <td>
+              <a href="/salespersons/<%= r.id %>" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

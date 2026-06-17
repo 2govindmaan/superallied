@@ -35,10 +35,11 @@ router.get('/new', (req, res) => {
   if (machine_no) {
     machine = db.prepare('SELECT * FROM sold_machines WHERE machine_no=?').get(machine_no);
   }
+  const salespersons = db.prepare('SELECT id,name FROM salespersons WHERE active=1 ORDER BY name ASC').all();
   res.render('spare-quotations/form', {
     title: 'New Spare Part Quotation',
     quotation: null, items: [],
-    machine, s,
+    machine, s, salespersons,
     defaultSalesperson: s.contact_name || '',
     formatINR
   });
@@ -77,17 +78,25 @@ router.post('/', (req, res) => {
     if (sm) soldMachineId = sm.id;
   }
 
+  // Resolve salesperson_id
+  const spId = f.salesperson_id ? parseInt(f.salesperson_id) : null;
+  let spName = f.salesperson || '';
+  if (spId) {
+    const spRow = db.prepare('SELECT name FROM salespersons WHERE id=?').get(spId);
+    if (spRow) spName = spRow.name;
+  }
+
   const info = db.prepare(`INSERT INTO spare_quotations
     (quotation_no,serial_number,financial_year,sold_machine_id,machine_no,customer_name,
      customer_address,customer_gstin,contact_person,mobile,place_of_supply,
-     tax_mode,salesperson,validity_days,remarks,terms,status,show_discount,quotation_date,
+     tax_mode,salesperson,salesperson_id,validity_days,remarks,terms,status,show_discount,quotation_date,
      total_basic,total_gst,grand_total,created_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(quotationNo, serialNumber, financialYear, soldMachineId,
          f.machine_no||'', f.customer_name.trim(), f.customer_address||'',
          f.customer_gstin||'', f.contact_person||'', f.mobile||'',
          f.place_of_supply||'', f.tax_mode||'CGST_SGST',
-         f.salesperson||'', +f.validity_days||30,
+         spName, spId, +f.validity_days||7,
          f.remarks||'', f.terms||'', 'draft',
          f.show_discount === 'on' ? 1 : 0,
          f.quotation_date || new Date().toISOString().slice(0,10),
@@ -129,9 +138,10 @@ router.get('/:id/edit', (req, res) => {
   if (quotation.machine_no) {
     machine = db.prepare('SELECT * FROM sold_machines WHERE machine_no=?').get(quotation.machine_no);
   }
+  const salespersons = db.prepare('SELECT id,name FROM salespersons WHERE active=1 ORDER BY name ASC').all();
   res.render('spare-quotations/form', {
     title: `Edit ${quotation.quotation_no}`,
-    quotation, items, machine, s,
+    quotation, items, machine, s, salespersons,
     defaultSalesperson: s.contact_name || '',
     formatINR
   });
@@ -156,15 +166,22 @@ router.post('/:id/update', (req, res) => {
     if (sm) soldMachineId = sm.id;
   }
 
+  const spId2 = f.salesperson_id ? parseInt(f.salesperson_id) : null;
+  let spName2 = f.salesperson || '';
+  if (spId2) {
+    const spRow2 = db.prepare('SELECT name FROM salespersons WHERE id=?').get(spId2);
+    if (spRow2) spName2 = spRow2.name;
+  }
+
   db.prepare(`UPDATE spare_quotations SET
     sold_machine_id=?,machine_no=?,customer_name=?,customer_address=?,customer_gstin=?,
-    contact_person=?,mobile=?,place_of_supply=?,tax_mode=?,salesperson=?,
+    contact_person=?,mobile=?,place_of_supply=?,tax_mode=?,salesperson=?,salesperson_id=?,
     validity_days=?,remarks=?,terms=?,status=?,show_discount=?,quotation_date=?,
     total_basic=?,total_gst=?,grand_total=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
     .run(soldMachineId, f.machine_no||'', f.customer_name||'', f.customer_address||'',
          f.customer_gstin||'', f.contact_person||'', f.mobile||'',
-         f.place_of_supply||'', f.tax_mode||'CGST_SGST', f.salesperson||'',
-         +f.validity_days||30, f.remarks||'', f.terms||'', f.status||'draft',
+         f.place_of_supply||'', f.tax_mode||'CGST_SGST', spName2, spId2,
+         +f.validity_days||7, f.remarks||'', f.terms||'', f.status||'draft',
          f.show_discount === 'on' ? 1 : 0,
          f.quotation_date || new Date().toISOString().slice(0,10),
          totalBasic, totalGst, grandTotal, req.params.id);

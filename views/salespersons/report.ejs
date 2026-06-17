@@ -1,0 +1,194 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'salespersons', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>Salesperson Reports</h4>
+    <a href="/salespersons" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">From</label>
+          <input type="date" name="from" class="form-control form-control-sm" value="<%= from %>">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">To</label>
+          <input type="date" name="to" class="form-control form-control-sm" value="<%= to %>">
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i>Filter</button>
+          <a href="/salespersons/reports/summary" class="btn btn-outline-secondary btn-sm ms-1">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Spare Quotations by Salesperson -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+      <i class="bi bi-receipt-cutoff me-2 text-success"></i>Spare Quotations — Salesperson Wise
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Salesperson</th>
+            <th class="text-center">Total</th>
+            <th class="text-center text-secondary">Draft</th>
+            <th class="text-center text-info">Sent</th>
+            <th class="text-center text-success">Confirmed</th>
+            <th class="text-center text-danger">Cancelled</th>
+            <th class="text-end">Total Value</th>
+            <th class="text-end text-success">Confirmed Value</th>
+            <th class="text-center">Conv%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!spareStats.length) { %>
+          <tr><td colspan="9" class="text-center text-muted py-3">No data found.</td></tr>
+          <% } %>
+          <%
+            const grandTotal = spareStats.reduce((a,r)=>a+(r.total_value||0),0);
+            const grandConf  = spareStats.reduce((a,r)=>a+(r.confirmed_value||0),0);
+            const grandCount = spareStats.reduce((a,r)=>a+(r.total_count||0),0);
+          %>
+          <% spareStats.forEach(r => { %>
+          <% const conv = r.total_count ? Math.round((r.confirmed_count/r.total_count)*100) : 0; %>
+          <tr>
+            <td>
+              <% if (r.sp_id) { %>
+              <a href="/salespersons/<%= r.sp_id %>" class="fw-semibold text-decoration-none">
+                <i class="bi bi-person-circle me-1 text-muted"></i><%= r.sp_name %>
+              </a>
+              <% } else { %>
+              <span class="text-muted fst-italic"><%= r.sp_name %></span>
+              <% } %>
+            </td>
+            <td class="text-center fw-bold"><%= r.total_count %></td>
+            <td class="text-center text-muted"><%= r.draft_count || 0 %></td>
+            <td class="text-center text-info"><%= r.sent_count || 0 %></td>
+            <td class="text-center text-success fw-semibold"><%= r.confirmed_count || 0 %></td>
+            <td class="text-center text-danger"><%= r.cancelled_count || 0 %></td>
+            <td class="text-end">₹<%= formatINR(r.total_value) %></td>
+            <td class="text-end text-success fw-semibold">₹<%= formatINR(r.confirmed_value) %></td>
+            <td class="text-center">
+              <span class="badge <%= conv>=50?'bg-success':conv>=25?'bg-warning text-dark':'bg-secondary' %>">
+                <%= conv %>%
+              </span>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+        <tfoot class="table-light fw-bold">
+          <tr>
+            <td>TOTAL</td>
+            <td class="text-center"><%= grandCount %></td>
+            <td colspan="3"></td>
+            <td></td>
+            <td class="text-end">₹<%= formatINR(grandTotal) %></td>
+            <td class="text-end text-success">₹<%= formatINR(grandConf) %></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Machine Quotations by Salesperson -->
+  <% if (machineStats.length) { %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">
+      <i class="bi bi-file-earmark-text me-2 text-warning"></i>Machine Quotations — Salesperson Wise
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Salesperson</th>
+            <th class="text-center">Total</th>
+            <th class="text-center text-secondary">Draft</th>
+            <th class="text-center text-info">Sent</th>
+            <th class="text-center text-success">Confirmed</th>
+            <th class="text-end">Total Value</th>
+            <th class="text-center">Conv%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% machineStats.forEach(r => { %>
+          <% const conv = r.total_count ? Math.round(((r.confirmed_count||0)/r.total_count)*100) : 0; %>
+          <tr>
+            <td>
+              <% if (r.sp_id) { %>
+              <a href="/salespersons/<%= r.sp_id %>" class="fw-semibold text-decoration-none">
+                <i class="bi bi-person-circle me-1 text-muted"></i><%= r.sp_name %>
+              </a>
+              <% } else { %>
+              <span class="text-muted fst-italic"><%= r.sp_name %></span>
+              <% } %>
+            </td>
+            <td class="text-center fw-bold"><%= r.total_count %></td>
+            <td class="text-center text-muted"><%= r.draft_count || 0 %></td>
+            <td class="text-center text-info"><%= r.sent_count || 0 %></td>
+            <td class="text-center text-success fw-semibold"><%= r.confirmed_count || 0 %></td>
+            <td class="text-end">₹<%= formatINR(r.total_value) %></td>
+            <td class="text-center">
+              <span class="badge <%= conv>=50?'bg-success':conv>=25?'bg-warning text-dark':'bg-secondary' %>">
+                <%= conv %>%
+              </span>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Monthly trend chart -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">Monthly Trend — Spare Quotation Value by Salesperson</div>
+    <div class="card-body" style="height:260px">
+      <canvas id="monthlyChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const raw = <%- JSON.stringify(monthlyTrend) %>;
+// Build unique months and salesperson names
+const months = [...new Set(raw.map(r=>r.month))].sort();
+const names  = [...new Set(raw.map(r=>r.sp_name))];
+const palette = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+
+const datasets = names.map((name, i) => ({
+  label: name,
+  data: months.map(m => {
+    const found = raw.find(r=>r.month===m && r.sp_name===name);
+    return found ? found.value : 0;
+  }),
+  backgroundColor: palette[i % palette.length] + '33',
+  borderColor: palette[i % palette.length],
+  borderWidth: 2,
+  tension: 0.3,
+  fill: false
+}));
+
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: { labels: months, datasets },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { font:{size:10}, boxWidth:12 } } },
+    scales: {
+      y: { ticks: { font:{size:9}, callback: v => '₹' + v.toLocaleString('en-IN') }, grid:{color:'#f0f0f0'} },
+      x: { ticks: { font:{size:9} } }
+    }
+  }
+});
+</script>
+</body></html>

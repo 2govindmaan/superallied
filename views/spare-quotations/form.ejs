@@ -73,8 +73,15 @@
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold">Salesperson</label>
-                <input name="salesperson" class="form-control form-control-sm"
-                  value="<%= quotation?.salesperson || defaultSalesperson || '' %>">
+                <select name="salesperson_id" class="form-select form-select-sm">
+                  <option value="">— Select —</option>
+                  <% (salespersons||[]).forEach(sp => { %>
+                  <option value="<%= sp.id %>"
+                    <%= (quotation?.salesperson_id === sp.id || String(quotation?.salesperson_id)===String(sp.id)) ? 'selected' : '' %>>
+                    <%= sp.name %>
+                  </option>
+                  <% }) %>
+                </select>
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold">Quotation Date</label>
@@ -201,7 +208,7 @@
             <div class="mb-2">
               <label class="form-label small">Validity (days)</label>
               <input type="number" name="validity_days" class="form-control form-control-sm" style="max-width:100px"
-                value="<%= quotation?.validity_days || 30 %>">
+                value="<%= quotation?.validity_days || 7 %>">
             </div>
             <div>
               <label class="form-label small">Remarks</label>
