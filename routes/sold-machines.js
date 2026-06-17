@@ -35,8 +35,8 @@ router.get('/new', (req, res) => {
 // ── Create ────────────────────────────────────────────────────────────────────
 router.post('/', (req, res) => {
   const f = req.body;
-  if (!f.machine_no?.trim() || !f.customer_name?.trim()) {
-    req.session.flash = { error: 'Machine No and Customer Name are required.' };
+  if (!f.machine_no?.trim()) {
+    req.session.flash = { error: 'Machine No is required.' };
     return res.redirect('/sold-machines/new');
   }
   if (db.prepare('SELECT id FROM sold_machines WHERE machine_no=?').get(f.machine_no.trim())) {
@@ -127,8 +127,8 @@ router.post('/import/excel', (req, res) => {
 
     for (const row of rows) {
       const mno = String(row['Machine No'] || row['machine_no'] || '').trim();
+      if (!mno) { skipped++; continue; }
       const cust = String(row['Customer Name'] || row['customer_name'] || '').trim();
-      if (!mno || !cust) { skipped++; continue; }
       try {
         const info = stmt.run(mno, row['Chassis Number']||'', row['Engine Number']||'',
           row['Model']||'', cust, row['Customer Address']||'',
