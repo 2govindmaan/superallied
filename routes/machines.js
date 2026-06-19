@@ -2,6 +2,33 @@ const express = require('express');
 const router  = express.Router();
 const { db }  = require('../db');
 
+// ── GET /machines/prices – Purchase price management table ──────────────────
+router.get('/prices', (req, res) => {
+  const machines = db.prepare(`
+    SELECT id, display_name, model_series, basic_price, purchase_price, active
+    FROM machines ORDER BY display_name
+  `).all();
+
+  res.render('machines/prices', { title: 'Purchase Price Management', machines });
+});
+
+// ── PUT /machines/:id/price – Update purchase price ────────────────────────
+router.put('/:id/price', (req, res) => {
+  const { purchase_price } = req.body;
+
+  if (purchase_price === undefined || purchase_price === null) {
+    return res.json({ ok: false, error: 'purchase_price required' });
+  }
+
+  try {
+    db.prepare('UPDATE machines SET purchase_price=? WHERE id=?')
+      .run(Math.max(0, parseFloat(purchase_price)), req.params.id);
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ── GET /machines – Admin machine management console ─────────────────────────
 router.get('/', (req, res) => {
   const machines = db.prepare(`
