@@ -544,6 +544,139 @@ app.get('/api/customers/search', requireLogin, (req, res) => {
   res.json(rows);
 });
 
+// ── Universal Search API ──────────────────────────────────────────────────────
+app.get('/api/search', requireLogin, (req, res) => {
+  const query = (req.query.q || '').trim().toLowerCase();
+  if (!query || query.length < 2) {
+    return res.json({ results: [] });
+  }
+
+  const results = [];
+  const limit = 15;
+
+  try {
+    // Search machines by model_code and display_name
+    const machines = db.prepare(`
+      SELECT id, display_name, model_code, basic_price
+      FROM machines
+      WHERE active=1 AND (
+        LOWER(display_name) LIKE ?
+        OR LOWER(model_code) LIKE ?
+      )
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, limit);
+
+    machines.forEach(m => {
+      results.push({
+        category: 'Machines',
+        title: m.display_name,
+        meta: `${m.model_code} • ₹${m.basic_price.toLocaleString('en-IN')}`,
+        link: `/machines/${m.id}`
+      });
+    });
+
+    // Search customers by name or phone
+    const customers = db.prepare(`
+      SELECT id, name, phone, gstin
+      FROM customers
+      WHERE LOWER(name) LIKE ? OR phone LIKE ?
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, limit);
+
+    customers.forEach(c => {
+      results.push({
+        category: 'Customers',
+        title: c.name,
+        meta: c.phone ? `📞 ${c.phone}` : '',
+        link: `/customers`
+      });
+    });
+
+    // Search quotations by quotation_number or customer name
+    const quotations = db.prepare(`
+      SELECT q.id, q.quotation_number, c.name as customer_name, m.display_name as machine_name
+      FROM quotations q
+      JOIN customers c ON c.id = q.customer_id
+      JOIN machines m ON m.id = q.machine_id
+      WHERE q.quotation_number LIKE ? OR LOWER(c.name) LIKE ?
+      ORDER BY q.created_at DESC
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, limit);
+
+    quotations.forEach(q => {
+      results.push({
+        category: 'Quotations',
+        title: `#${q.quotation_number} - ${q.customer_name}`,
+        meta: q.machine_name,
+        link: `/quotations/${q.id}`
+      });
+    });
+
+    // Search spare parts by part_number or name
+    const spareParts = db.prepare(`
+      SELECT id, part_number, name, rate
+      FROM spare_parts
+      WHERE active=1 AND (
+        LOWER(part_number) LIKE ?
+        OR LOWER(name) LIKE ?
+      )
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, limit);
+
+    spareParts.forEach(p => {
+      results.push({
+        category: 'Spare Parts',
+        title: `${p.part_number} - ${p.name}`,
+        meta: `₹${p.rate.toLocaleString('en-IN')}`,
+        link: `/spare-parts`
+      });
+    });
+
+    // Search sold machines by machine_no or chassis_number
+    const soldMachines = db.prepare(`
+      SELECT id, machine_no, chassis_number, customer_name, engine_number
+      FROM sold_machines
+      WHERE LOWER(machine_no) LIKE ? OR LOWER(chassis_number) LIKE ? OR LOWER(engine_number) LIKE ?
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, `%${query}%`, limit);
+
+    soldMachines.forEach(s => {
+      results.push({
+        category: 'Sold Machines',
+        title: s.machine_no || s.chassis_number,
+        meta: `${s.customer_name} • ${s.engine_number || ''}`.trim(),
+        link: `/sold-machines/${s.id}`
+      });
+    });
+
+    // Search employees by name or employee_code
+    const employees = db.prepare(`
+      SELECT id, full_name, employee_code, designation
+      FROM users
+      WHERE is_hr_active=1 AND (
+        LOWER(full_name) LIKE ?
+        OR LOWER(employee_code) LIKE ?
+      )
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, limit);
+
+    employees.forEach(e => {
+      results.push({
+        category: 'Employees',
+        title: e.full_name,
+        meta: `${e.employee_code} • ${e.designation || ''}`.trim(),
+        link: `/hr/employees/${e.id}`
+      });
+    });
+
+    // Limit total results to 15
+    res.json({ results: results.slice(0, 15) });
+  } catch(e) {
+    console.error('Search error:', e);
+    res.json({ results: [] });
+  }
+});
+
 // ── Photo upload API ──────────────────────────────────────────────────────────
 app.post('/api/upload', requireLogin, (req, res) => {
   const { data, folder } = req.body;

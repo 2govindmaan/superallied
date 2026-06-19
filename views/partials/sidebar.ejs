@@ -44,6 +44,17 @@
   </div>
   <hr class="border-secondary my-0">
 
+  <!-- Universal Search Bar -->
+  <div class="p-2 border-bottom border-secondary">
+    <div class="search-input-wrapper">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-secondary border-0"><i class="bi bi-search text-white"></i></span>
+        <input type="text" class="form-control border-0" id="universalSearch" placeholder="Search..." autocomplete="off">
+      </div>
+      <div class="search-dropdown" id="searchDropdown"></div>
+    </div>
+  </div>
+
   <!-- Nav -->
   <div class="flex-grow-1 overflow-auto px-2 py-2 sidebar-scroll">
 
@@ -286,5 +297,64 @@ function closeSidebarOnMobile() {
     document.getElementById('sidebar').classList.remove('sidebar-open');
     document.getElementById('sidebarBackdrop').classList.remove('show');
   }
+}
+
+// Universal search
+const searchInput = document.getElementById('universalSearch');
+const searchDropdown = document.getElementById('searchDropdown');
+let searchTimeout;
+
+if (searchInput) {
+  searchInput.addEventListener('input', async (e) => {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+
+    if (!query) {
+      searchDropdown.classList.remove('show');
+      return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const results = await resp.json();
+
+        if (!results.results || results.results.length === 0) {
+          searchDropdown.innerHTML = '<div class="p-2 text-muted small text-center">No results found</div>';
+          searchDropdown.classList.add('show');
+          return;
+        }
+
+        let html = '';
+        let currentCategory = '';
+
+        results.results.forEach(item => {
+          if (item.category !== currentCategory) {
+            if (currentCategory) html += '</div>';
+            html += `<div class="search-result-category">${item.category}</div>`;
+            currentCategory = item.category;
+          }
+          html += `
+            <a href="${item.link}" class="search-result-item" onclick="closeSidebarOnMobile()">
+              <div class="search-result-title">${item.title}</div>
+              ${item.meta ? `<div class="search-result-meta">${item.meta}</div>` : ''}
+            </a>
+          `;
+        });
+
+        searchDropdown.innerHTML = html;
+        searchDropdown.classList.add('show');
+      } catch(e) {
+        searchDropdown.innerHTML = '<div class="p-2 text-danger small">Search error</div>';
+        searchDropdown.classList.add('show');
+      }
+    }, 300);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-input-wrapper')) {
+      searchDropdown.classList.remove('show');
+    }
+  });
 }
 </script>
