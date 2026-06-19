@@ -2,27 +2,32 @@ const express = require('express');
 const router  = express.Router();
 const { db }  = require('../db');
 
-// ── GET /machines/prices – Purchase price management table ──────────────────
-router.get('/prices', (req, res) => {
+// ── GET /machines/price-update – Update selling prices table ────────────────
+router.get('/price-update', (req, res) => {
   const machines = db.prepare(`
-    SELECT id, display_name, model_series, basic_price, purchase_price, active
-    FROM machines ORDER BY display_name
+    SELECT id, display_name, model_series, basic_price
+    FROM machines WHERE active=1 ORDER BY display_name
   `).all();
 
-  res.render('machines/prices', { title: 'Purchase Price Management', machines });
+  res.render('machines/price-update', { title: 'Update Machine Selling Prices', machines });
 });
 
-// ── PUT /machines/:id/price – Update purchase price ────────────────────────
-router.put('/:id/price', (req, res) => {
-  const { purchase_price } = req.body;
+// ── PUT /machines/:id/selling-price – Update selling price ───────────────────
+router.put('/:id/selling-price', (req, res) => {
+  const { basic_price } = req.body;
 
-  if (purchase_price === undefined || purchase_price === null) {
-    return res.json({ ok: false, error: 'purchase_price required' });
+  if (basic_price === undefined || basic_price === null) {
+    return res.json({ ok: false, error: 'basic_price required' });
+  }
+
+  const price = parseInt(basic_price) || 0;
+  if (price <= 0) {
+    return res.json({ ok: false, error: 'Price must be greater than 0' });
   }
 
   try {
-    db.prepare('UPDATE machines SET purchase_price=? WHERE id=?')
-      .run(Math.max(0, parseFloat(purchase_price)), req.params.id);
+    db.prepare('UPDATE machines SET basic_price=? WHERE id=?')
+      .run(price, req.params.id);
     res.json({ ok: true });
   } catch(e) {
     res.json({ ok: false, error: e.message });
