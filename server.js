@@ -515,13 +515,41 @@ app.post('/users', requireLogin, requireAdmin, (req, res) => {
 });
 
 app.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
-  if (+req.params.id === req.session.userId) {
+  const uid = +req.params.id;
+  if (uid === req.session.userId) {
     req.session.flash = { error: 'You cannot delete your own account.' };
     return res.redirect('/users');
   }
-  const u = db.prepare('SELECT username FROM users WHERE id = ?').get(req.params.id);
-  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
-  req.session.flash = { success: `User "${u?.username}" deleted.` };
+  const u = db.prepare('SELECT username FROM users WHERE id = ?').get(uid);
+  if (!u) { req.session.flash = { error: 'User not found.' }; return res.redirect('/users'); }
+  try {
+    db.exec('BEGIN');
+    db.exec('PRAGMA foreign_keys = OFF');
+    // Nullify nullable FK columns
+    db.prepare('UPDATE spare_quotations SET created_by=NULL  WHERE created_by=?').run(uid);
+    db.prepare('UPDATE spare_quotations SET approved_by=NULL WHERE approved_by=?').run(uid);
+    db.prepare('UPDATE sold_machines    SET created_by=NULL  WHERE created_by=?').run(uid);
+    db.prepare('UPDATE leads            SET created_by=NULL  WHERE created_by=?').run(uid);
+    // Reassign NOT NULL FK columns to user 0 (deleted placeholder) — keeps history intact
+    db.prepare('UPDATE quotations       SET user_id=0 WHERE user_id=?').run(uid);
+    // Delete rows owned by user in personal tables
+    db.prepare('DELETE FROM attendance     WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM leaves         WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM leave_balances WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM salary_records WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM notifications  WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM expenses       WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM visits         WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM audit_log      WHERE user_id=?').run(uid);
+    db.prepare('DELETE FROM users WHERE id=?').run(uid);
+    db.exec('PRAGMA foreign_keys = ON');
+    db.exec('COMMIT');
+    req.session.flash = { success: `User "${u.username}" deleted.` };
+  } catch(e) {
+    db.exec('ROLLBACK');
+    db.exec('PRAGMA foreign_keys = ON');
+    req.session.flash = { error: `Could not delete user: ${e.message}` };
+  }
   res.redirect('/users');
 });
 
