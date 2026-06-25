@@ -12,15 +12,16 @@ router.get('/', (req, res) => {
   const conds = [];
   const params = [];
 
-  if (part_number) { conds.push("sp.part_number LIKE ?"); params.push(`%${part_number}%`); }
-  if (part_name)   { conds.push("sp.description LIKE ?");  params.push(`%${part_name}%`); }
-  if (category)    { conds.push("(sa.category=? OR sp.category=?)"); params.push(category, category); }
+  if (part_number) { conds.push("(sp.sap_part_no LIKE ? OR sp.rnd_part_no LIKE ?)"); params.push(`%${part_number}%`, `%${part_number}%`); }
+  if (part_name)   { conds.push("sp.material_description LIKE ?"); params.push(`%${part_name}%`); }
+  if (category)    { conds.push("COALESCE(sa.category, sp.category,'')=?"); params.push(category); }
   if (out_of_stock === '1') { conds.push("COALESCE(sa.stock_quantity,0)=0"); }
 
   const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
   const rows = db.prepare(`
-    SELECT sp.id, sp.part_number, sp.description, sp.hsn, sp.category AS part_category,
+    SELECT sp.id, sp.sap_part_no, sp.rnd_part_no, sp.material_description,
+           sp.hsn_code, sp.category AS part_category,
            COALESCE(sa.stock_quantity,0) AS stock_quantity,
            COALESCE(sa.category, sp.category, '') AS category,
            sa.remarks, sa.updated_at, sa.updated_by,
@@ -29,7 +30,7 @@ router.get('/', (req, res) => {
     LEFT JOIN stock_availability sa ON sa.part_id = sp.id
     LEFT JOIN users u ON u.id = sa.updated_by
     ${where}
-    ORDER BY sp.part_number ASC
+    ORDER BY sp.sap_part_no ASC
     LIMIT ? OFFSET ?
   `).all(...params, limit, offset);
 
@@ -104,8 +105,9 @@ router.post('/:partId/update', (req, res) => {
 // ── Export to Excel ───────────────────────────────────────────────────────────
 router.get('/export', (req, res) => {
   const rows = db.prepare(`
-    SELECT sp.part_number AS "Part Number",
-           sp.description AS "Description",
+    SELECT sp.sap_part_no AS "SAP Part No",
+           sp.rnd_part_no AS "RND Part No",
+           sp.material_description AS "Description",
            COALESCE(sa.category, sp.category,'') AS "Category",
            COALESCE(sa.stock_quantity,0) AS "Stock Quantity",
            sa.remarks AS "Remarks",
@@ -130,8 +132,8 @@ router.get('/export', (req, res) => {
 router.get('/template', (req, res) => {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Part Number', 'Stock Quantity', 'Remarks', 'Category'],
-    ['SAMPLE-001', 10, 'In warehouse', 'Bearings'],
+    ['SAP Part No', 'RND Part No', 'Stock Quantity', 'Remarks', 'Category'],
+    ['SAP-001', 'RND-001', 10, 'In warehouse', 'Bearings'],
   ]);
   XLSX.utils.book_append_sheet(wb, ws, 'Template');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
@@ -155,15 +157,16 @@ router.post('/import/excel', (req, res) => {
   const failed  = [];
 
   for (const row of data) {
-    const partNum = String(row['Part Number'] || row['part_number'] || row['PART NUMBER'] || '').trim();
+    const sapNo   = String(row['SAP Part No'] || row['Part Number'] || row['part_number'] || '').trim();
+    const rndNo   = String(row['RND Part No'] || row['rnd_part_no'] || '').trim();
     const qty     = parseInt(row['Stock Quantity'] || row['stock_quantity'] || row['QTY'] || 0);
     const remarks = String(row['Remarks'] || row['remarks'] || '').trim();
     const cat     = String(row['Category'] || row['category'] || '').trim();
 
-    if (!partNum) { failed.push({ row, reason: 'Missing Part Number' }); continue; }
+    if (!sapNo && !rndNo) { failed.push({ row, reason: 'Missing Part Number' }); continue; }
 
-    const part = db.prepare("SELECT id FROM spare_parts WHERE part_number=?").get(partNum);
-    if (!part) { failed.push({ row, reason: `Part not found: ${partNum}` }); continue; }
+    const part = db.prepare("SELECT id FROM spare_parts WHERE sap_part_no=? OR rnd_part_no=?").get(sapNo || rndNo, rndNo || sapNo);
+    if (!part) { failed.push({ row, reason: `Part not found: ${sapNo || rndNo}` }); continue; }
 
     db.prepare(`
       INSERT INTO stock_availability (part_id, stock_quantity, remarks, category, updated_by, updated_at)

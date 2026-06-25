@@ -65,7 +65,8 @@
       <table class="table table-hover table-sm mb-0 align-middle">
         <thead class="table-light">
           <tr>
-            <th style="width:130px">Part No.</th>
+            <th style="width:120px">SAP Part No.</th>
+            <th style="width:110px">RND Part No.</th>
             <th>Description</th>
             <th>Category</th>
             <th class="text-center" style="width:110px">Stock</th>
@@ -78,8 +79,9 @@
         <tbody>
           <% rows.forEach(r => { %>
           <tr>
-            <td class="font-monospace small fw-semibold"><%= r.part_number %></td>
-            <td class="small"><%= r.description %></td>
+            <td class="font-monospace small fw-semibold"><%= r.sap_part_no || '—' %></td>
+            <td class="font-monospace small"><%= r.rnd_part_no || '—' %></td>
+            <td class="small"><%= r.material_description %></td>
             <td class="small"><%= r.category || '—' %></td>
             <td class="text-center">
               <% if (r.stock_quantity <= 0) { %>
@@ -95,7 +97,7 @@
             <td class="small text-muted"><%= r.updated_by_name || '—' %></td>
             <td>
               <button class="btn btn-sm btn-outline-primary py-0 px-2"
-                onclick="openEdit(<%= r.id %>, '<%= (r.part_number||'').replace(/'/g,"\\'") %>', '<%= (r.description||'').replace(/'/g,"\\'") %>', <%= r.stock_quantity %>, '<%= (r.remarks||'').replace(/'/g,"\\'") %>', '<%= (r.category||'').replace(/'/g,"\\'") %>')">
+                onclick="openEdit(<%= r.id %>, '<%= (r.sap_part_no||r.rnd_part_no||'').replace(/'/g,"\\'") %>', '<%= (r.material_description||'').replace(/'/g,"\\'") %>', <%= r.stock_quantity %>, '<%= (r.remarks||'').replace(/'/g,"\\'") %>', '<%= (r.category||'').replace(/'/g,"\\'") %>')">
                 <i class="bi bi-pencil"></i>
               </button>
             </td>
@@ -168,9 +170,9 @@
       <form method="POST" action="/stock/import/excel" enctype="multipart/form-data">
         <div class="modal-body">
           <div class="alert alert-info small mb-3">
-            <strong>Required columns:</strong> <code>Part Number</code>, <code>Stock Quantity</code><br>
+            <strong>Required:</strong> <code>SAP Part No</code> or <code>RND Part No</code>, <code>Stock Quantity</code><br>
             <strong>Optional:</strong> <code>Remarks</code>, <code>Category</code><br>
-            Part Number must match an existing part in the system.
+            Part number must match an existing part in the system.
             <a href="/stock/template" class="d-block mt-1">Download template</a>
           </div>
           <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
