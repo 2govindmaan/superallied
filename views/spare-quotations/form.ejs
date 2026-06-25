@@ -285,20 +285,28 @@ function searchParts(q) {
   }, 250);
 }
 
+let _suggParts = [];
 function showSuggestions(parts) {
+  _suggParts = parts;
   const div = document.getElementById('partSuggestions');
   if (!parts.length) { div.style.display='none'; return; }
-  div.innerHTML = parts.map(p => `
-    <div class="px-3 py-2 border-bottom suggestion-item" style="cursor:pointer"
-      onmousedown="selectPart(${p.id}, '${(p.sap_part_no||'').replace(/'/g,"\\'")}',
-        '${(p.material_description||'').replace(/'/g,"\\'")}',
-        '${p.hsn_code||''}', ${p.tax_rate||18},
-        ${p.mrp_basic||0}, ${p.ndp_basic||0})">
-      <div class="fw-semibold small">${p.material_description}</div>
-      <div class="text-muted" style="font-size:11px">SAP: ${p.sap_part_no||'—'} | RND: ${p.rnd_part_no||'—'} | MRP: ₹${Number(p.mrp_basic).toFixed(2)} | NDP: ₹${Number(p.ndp_basic).toFixed(2)}</div>
+  div.innerHTML = parts.map((p, idx) => `
+    <div class="px-3 py-2 border-bottom suggestion-item" style="cursor:pointer" data-idx="${idx}">
+      <div class="fw-semibold small">${escHtml(p.material_description)}</div>
+      <div class="text-muted" style="font-size:11px">SAP: ${escHtml(p.sap_part_no||'—')} | RND: ${escHtml(p.rnd_part_no||'—')} | MRP: ₹${Number(p.mrp_basic).toFixed(2)} | NDP: ₹${Number(p.ndp_basic).toFixed(2)}</div>
     </div>
   `).join('');
+  div.querySelectorAll('.suggestion-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const p = _suggParts[parseInt(el.dataset.idx)];
+      selectPart(p.id, p.sap_part_no||'', p.material_description||'', p.hsn_code||'', p.tax_rate||18, p.mrp_basic||0, p.ndp_basic||0);
+    });
+  });
   div.style.display='block';
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function hideSuggestions() {
@@ -396,9 +404,9 @@ function renderItems() {
   tbody.innerHTML = items.map((it, i) => `
     <tr id="row-${i}">
       <td class="text-center text-muted small">${i+1}</td>
-      <td class="small font-monospace">${it.part_no||'—'}</td>
-      <td class="small fw-semibold">${it.description}</td>
-      <td class="small">${it.hsn||''}</td>
+      <td class="small font-monospace">${escHtml(it.part_no||'—')}</td>
+      <td class="small fw-semibold">${escHtml(it.description)}</td>
+      <td class="small">${escHtml(it.hsn||'')}</td>
       <td><input type="number" class="form-control form-control-sm p-1" style="min-width:60px" value="${it.qty}" min="1" step="1" onchange="updateRow(${i},'qty',this.value)"></td>
       <td><input type="number" class="form-control form-control-sm p-1" value="${it.basic_rate}" min="0" step="0.01" onchange="updateRow(${i},'basic_rate',this.value)"></td>
       <td><input type="number" class="form-control form-control-sm p-1" value="${it.discount_percent}" min="0" max="100" step="0.01" onchange="updateRow(${i},'discount_percent',this.value)"></td>
