@@ -144,6 +144,7 @@
               &nbsp;|&nbsp; <span class="text-warning fw-semibold">NDP: ₹<span id="selPartNdp"></span></span>
               <% } %>
               &nbsp;|&nbsp; Tax: <span id="selPartTax"></span>%
+              &nbsp;|&nbsp; Stock: <span id="stockBadge" class="badge bg-secondary">—</span>
             </div>
           </div>
         </div>
@@ -316,6 +317,32 @@ function selectPart(id, sap, desc, hsn, tax, mrp, ndp) {
   document.getElementById('selectedPartInfo').classList.remove('d-none');
   hideSuggestions();
   document.getElementById('addQty').focus();
+  fetchPartStock(id);
+}
+
+async function fetchPartStock(partId) {
+  const badge = document.getElementById('stockBadge');
+  if (!badge) return;
+  badge.className = 'badge bg-secondary';
+  badge.textContent = '...';
+  try {
+    const r = await fetch('/stock/api/' + partId);
+    const d = await r.json();
+    const q = d.stock_quantity || 0;
+    if (q <= 0) {
+      badge.className = 'badge bg-danger';
+      badge.textContent = 'Out of Stock';
+    } else if (q <= 5) {
+      badge.className = 'badge bg-warning text-dark';
+      badge.textContent = q + ' (Low)';
+    } else {
+      badge.className = 'badge bg-success';
+      badge.textContent = q + ' Available';
+    }
+  } catch(e) {
+    badge.className = 'badge bg-secondary';
+    badge.textContent = '—';
+  }
 }
 
 document.addEventListener('click', e => {

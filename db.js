@@ -123,6 +123,19 @@ try { db.exec("ALTER TABLE spare_quotations ADD COLUMN approved_by INTEGER REFER
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN approved_at DATETIME"); } catch(e) {}
 try { db.exec("ALTER TABLE spare_quotations ADD COLUMN roundoff_amount REAL DEFAULT 0"); } catch(e) {}
 
+// Stock availability
+try { db.exec("ALTER TABLE spare_parts ADD COLUMN category TEXT DEFAULT ''"); } catch(e) {}
+db.exec(`CREATE TABLE IF NOT EXISTS stock_availability (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  part_id          INTEGER UNIQUE REFERENCES spare_parts(id) ON DELETE CASCADE,
+  stock_quantity   INTEGER DEFAULT 0,
+  category         TEXT DEFAULT '',
+  remarks          TEXT DEFAULT '',
+  updated_by       INTEGER REFERENCES users(id),
+  updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+
 // Machine quotation salesperson link
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_id INTEGER REFERENCES salespersons(id)"); } catch(e) {}
 try { db.exec("ALTER TABLE quotations ADD COLUMN tyre_option TEXT DEFAULT 'IT'"); } catch(e) {}
@@ -375,7 +388,7 @@ const defaultPerms = [
   ['manager','attendance'],['manager','hr_admin'],['manager','leave_approval'],
   ['manager','attendance_admin'],['manager','quotations'],['manager','customers'],
   ['manager','salary_admin'],['manager','reports'],['manager','leads'],
-  ['manager','spare_quotations'],['manager','sold_machines'],['manager','spare_parts'],['manager','spare_reports'],
+  ['manager','spare_quotations'],['manager','sold_machines'],['manager','spare_parts'],['manager','spare_reports'],['manager','stock'],
   ['manager','salespersons_admin'],
 
   // sales — machine quotations, leads, visits, HR self-service
@@ -384,7 +397,7 @@ const defaultPerms = [
 
   // office — machine + spare quotations, sold machines, parts, leads, HR self-service
   ['office','quotations'],['office','spare_quotations'],['office','sold_machines'],
-  ['office','spare_parts'],['office','spare_reports'],
+  ['office','spare_parts'],['office','spare_reports'],['office','stock'],
   ['office','leads'],['office','attendance'],['office','expense_claim'],['office','customers'],
 
   // service

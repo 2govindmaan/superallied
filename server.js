@@ -26,6 +26,7 @@ const soldMachinesRoutes    = require('./routes/sold-machines');
 const sparePartsRoutes      = require('./routes/spare-parts');
 const spareQuotationsRoutes = require('./routes/spare-quotations');
 const salespersonsRoutes    = require('./routes/salespersons');
+const stockRoutes           = require('./routes/stock');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -768,6 +769,7 @@ app.use('/sold-machines',     requireLogin, requirePerm('sold_machines'),    sol
 app.use('/spare-parts',       requireLogin, requirePerm('spare_parts'),       sparePartsRoutes);
 app.use('/spare-quotations',  requireLogin, requirePerm('spare_quotations'),  spareQuotationsRoutes);
 app.use('/salespersons',      requireLogin, requirePerm('salespersons_admin'), salespersonsRoutes);
+app.use('/stock',             requireLogin, requirePerm('stock'),             stockRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {

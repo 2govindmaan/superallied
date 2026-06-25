@@ -1,6 +1,6 @@
 <%
   const salesActive  = ['leads','visits','quotations','customers','machines','calculator','salespersons','route'].includes(active);
-  const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports'].includes(active);
+  const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports','stock'].includes(active);
   const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses'].includes(active);
   const isAdmin      = user && user.role === 'admin';
   const isMgr        = user && (user.role === 'admin' || user.role === 'manager');
@@ -133,6 +133,12 @@
       <% if (isAdmin || hasPerm('spare_reports')) { %>
       <a href="/spare-quotations/reports/summary" class="sb-link nav-link <%= active==='spare-reports'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-bar-chart-line-fill"></i>Parts Reports
+      </a>
+      <% } %>
+      <div class="sb-sub-label">Masters</div>
+      <% if (isAdmin || hasPerm('stock')) { %>
+      <a href="/stock" class="sb-link nav-link <%= active==='stock'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-boxes"></i>Stock Availability
       </a>
       <% } %>
     </div>
