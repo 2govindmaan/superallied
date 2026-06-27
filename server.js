@@ -27,6 +27,7 @@ const sparePartsRoutes      = require('./routes/spare-parts');
 const spareQuotationsRoutes = require('./routes/spare-quotations');
 const salespersonsRoutes    = require('./routes/salespersons');
 const stockRoutes           = require('./routes/stock');
+const backupRoutes          = require('./routes/backup');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -516,24 +517,42 @@ app.post('/users', requireLogin, requireAdmin, (req, res) => {
 });
 
 app.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
-  const uid = +req.params.id;
+  const uid      = +req.params.id;
+  const reassign = req.body.reassign === '1';
   if (uid === req.session.userId) {
     req.session.flash = { error: 'You cannot delete your own account.' };
     return res.redirect('/users');
   }
   const u = db.prepare('SELECT username FROM users WHERE id = ?').get(uid);
   if (!u) { req.session.flash = { error: 'User not found.' }; return res.redirect('/users'); }
+
+  // Find admin id to reassign to
+  const adminUser = db.prepare("SELECT id FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1").get();
+  const reassignTo = adminUser ? adminUser.id : null;
+
   try {
     db.exec('BEGIN');
     db.exec('PRAGMA foreign_keys = OFF');
-    // Nullify nullable FK columns
-    db.prepare('UPDATE spare_quotations SET created_by=NULL  WHERE created_by=?').run(uid);
-    db.prepare('UPDATE spare_quotations SET approved_by=NULL WHERE approved_by=?').run(uid);
-    db.prepare('UPDATE sold_machines    SET created_by=NULL  WHERE created_by=?').run(uid);
-    db.prepare('UPDATE leads            SET created_by=NULL  WHERE created_by=?').run(uid);
-    // Reassign NOT NULL FK columns to user 0 (deleted placeholder) — keeps history intact
-    db.prepare('UPDATE quotations       SET user_id=0 WHERE user_id=?').run(uid);
-    // Delete rows owned by user in personal tables
+
+    if (reassign && reassignTo) {
+      // Reassign all work to admin
+      db.prepare('UPDATE spare_quotations SET created_by=?  WHERE created_by=?').run(reassignTo, uid);
+      db.prepare('UPDATE spare_quotations SET approved_by=? WHERE approved_by=?').run(reassignTo, uid);
+      db.prepare('UPDATE sold_machines    SET created_by=?  WHERE created_by=?').run(reassignTo, uid);
+      db.prepare('UPDATE leads            SET created_by=?  WHERE created_by=?').run(reassignTo, uid);
+      db.prepare('UPDATE quotations       SET user_id=?     WHERE user_id=?').run(reassignTo, uid);
+      db.prepare('UPDATE stock_availability SET updated_by=? WHERE updated_by=?').run(reassignTo, uid);
+    } else {
+      // Nullify / unassign
+      db.prepare('UPDATE spare_quotations SET created_by=NULL  WHERE created_by=?').run(uid);
+      db.prepare('UPDATE spare_quotations SET approved_by=NULL WHERE approved_by=?').run(uid);
+      db.prepare('UPDATE sold_machines    SET created_by=NULL  WHERE created_by=?').run(uid);
+      db.prepare('UPDATE leads            SET created_by=NULL  WHERE created_by=?').run(uid);
+      db.prepare('UPDATE quotations       SET user_id=0        WHERE user_id=?').run(uid);
+      db.prepare('UPDATE stock_availability SET updated_by=NULL WHERE updated_by=?').run(uid);
+    }
+
+    // Always delete personal HR records
     db.prepare('DELETE FROM attendance     WHERE user_id=?').run(uid);
     db.prepare('DELETE FROM leaves         WHERE user_id=?').run(uid);
     db.prepare('DELETE FROM leave_balances WHERE user_id=?').run(uid);
@@ -545,7 +564,11 @@ app.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
     db.prepare('DELETE FROM users WHERE id=?').run(uid);
     db.exec('PRAGMA foreign_keys = ON');
     db.exec('COMMIT');
-    req.session.flash = { success: `User "${u.username}" deleted.` };
+
+    const msg = reassign && reassignTo
+      ? `User "${u.username}" deleted. All records reassigned to admin.`
+      : `User "${u.username}" deleted.`;
+    req.session.flash = { success: msg };
   } catch(e) {
     db.exec('ROLLBACK');
     db.exec('PRAGMA foreign_keys = ON');
@@ -770,6 +793,7 @@ app.use('/spare-parts',       requireLogin, requirePerm('spare_parts'),       sp
 app.use('/spare-quotations',  requireLogin, requirePerm('spare_quotations'),  spareQuotationsRoutes);
 app.use('/salespersons',      requireLogin, requirePerm('salespersons_admin'), salespersonsRoutes);
 app.use('/stock',             requireLogin, requirePerm('stock'),             stockRoutes);
+app.use('/backup',            requireLogin, requireAdmin,                       backupRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {
