@@ -1,0 +1,273 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'solar-quotations', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-sun-fill me-2 text-warning"></i><%= title %></h4>
+    <a href="/solar-quotations" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <% const isEdit = !!quotation; %>
+  <form method="post" action="<%= isEdit ? '/solar-quotations/'+quotation.id+'/update' : '/solar-quotations' %>">
+
+    <div class="row g-3">
+      <!-- Customer Info -->
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Customer Details</span>
+            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#customerSearchModal">
+              <i class="bi bi-search me-1"></i>Search Existing
+            </button>
+          </div>
+          <div class="card-body">
+            <input type="hidden" name="solar_customer_id" id="solar_customer_id" value="<%= quotation?.solar_customer_id || prefillCustomer?.id || '' %>">
+            <div class="mb-2">
+              <label class="form-label fw-semibold">Customer Name *</label>
+              <input name="customer_name" id="customer_name" class="form-control" required value="<%= quotation?.customer_name || prefillCustomer?.name || '' %>">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Phone</label>
+              <input name="customer_phone" id="customer_phone" class="form-control" value="<%= quotation?.customer_phone || prefillCustomer?.phone || '' %>">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Address</label>
+              <textarea name="customer_address" id="customer_address" class="form-control" rows="2"><%= quotation?.customer_address || prefillCustomer?.address || '' %></textarea>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col">
+                <label class="form-label">Consumer Number</label>
+                <input name="consumer_number" id="consumer_number" class="form-control" value="<%= quotation?.consumer_number || prefillCustomer?.consumer_number || '' %>">
+              </div>
+              <div class="col">
+                <label class="form-label">Consumer Type</label>
+                <input name="consumer_type" id="consumer_type" class="form-control" placeholder="LMV-1" value="<%= quotation?.consumer_type || prefillCustomer?.consumer_type || '' %>">
+              </div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col">
+                <label class="form-label">Sanction Load</label>
+                <input name="sanction_load" id="sanction_load" class="form-control" placeholder="3 KW" value="<%= quotation?.sanction_load || prefillCustomer?.sanction_load || '' %>">
+              </div>
+              <div class="col">
+                <label class="form-label">Email</label>
+                <input name="customer_email" id="customer_email" type="email" class="form-control" value="<%= quotation?.customer_email || prefillCustomer?.email || '' %>">
+              </div>
+            </div>
+            <% if (!isEdit) { %>
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="checkbox" name="save_customer" id="save_customer" checked>
+              <label class="form-check-label small" for="save_customer">Save as solar customer for future use</label>
+            </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quotation Info -->
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-warning bg-opacity-10"><span class="fw-semibold">Quotation Details</span></div>
+          <div class="card-body">
+            <div class="row g-2 mb-2">
+              <div class="col">
+                <label class="form-label fw-semibold">System Type</label>
+                <select name="system_type" class="form-select">
+                  <option value="ONGRID"  <%= (quotation?.system_type||'ONGRID')==='ONGRID' ?'selected':'' %>>ONGRID</option>
+                  <option value="OFFGRID" <%= quotation?.system_type==='OFFGRID'?'selected':'' %>>OFFGRID</option>
+                  <option value="HYBRID"  <%= quotation?.system_type==='HYBRID' ?'selected':'' %>>HYBRID</option>
+                </select>
+              </div>
+              <div class="col">
+                <label class="form-label fw-semibold">System Capacity (KW)</label>
+                <input name="system_capacity" type="number" step="0.01" class="form-control" placeholder="3.00" value="<%= quotation?.system_capacity || '' %>">
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Quotation Date</label>
+              <input name="quotation_date" type="date" class="form-control" value="<%= quotation?.quotation_date || new Date().toISOString().slice(0,10) %>">
+            </div>
+            <% if (isEdit) { %>
+            <div class="mb-2">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select">
+                <option value="draft"     <%= quotation.status==='draft'    ?'selected':'' %>>Draft</option>
+                <option value="sent"      <%= quotation.status==='sent'     ?'selected':'' %>>Sent</option>
+                <option value="approved"  <%= quotation.status==='approved' ?'selected':'' %>>Approved</option>
+                <option value="rejected"  <%= quotation.status==='rejected' ?'selected':'' %>>Rejected</option>
+                <option value="converted" <%= quotation.status==='converted'?'selected':'' %>>Converted</option>
+              </select>
+            </div>
+            <% } %>
+            <div class="mb-2">
+              <label class="form-label">Notes / Remarks</label>
+              <textarea name="notes" class="form-control" rows="3" placeholder="Panel brand, structure height, terms, etc."><%= quotation?.notes || '' %></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Items / Components (Internal)</span>
+        <span class="badge bg-secondary">Individual prices not shown on customer quotation</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered mb-0" id="itemsTable">
+            <thead class="table-light">
+              <tr>
+                <th style="width:40px">#</th>
+                <th style="width:120px">Part No</th>
+                <th>Description</th>
+                <th style="width:80px">Qty</th>
+                <th style="width:100px">Rate (₹)</th>
+                <th style="width:80px">GST %</th>
+                <th style="width:120px">Amount (₹)</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+        <div class="p-2">
+          <button type="button" class="btn btn-sm btn-outline-warning" onclick="addRow()"><i class="bi bi-plus-lg me-1"></i>Add Item</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-header bg-warning bg-opacity-10"><span class="fw-semibold">Pricing (Shown on Quotation)</span></div>
+      <div class="card-body">
+        <div class="row g-3 justify-content-end">
+          <div class="col-md-4">
+            <label class="form-label">Total Amount (₹)</label>
+            <input name="total_amount" id="total_amount" type="number" step="0.01" class="form-control" value="<%= quotation?.total_amount || 0 %>">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Discount (₹)</label>
+            <input name="discount_amount" id="discount_amount" type="number" step="0.01" class="form-control" value="<%= quotation?.discount_amount || 0 %>" oninput="calcGrandTotal()">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Grand Total (₹) *</label>
+            <input name="grand_total" id="grand_total" type="number" step="0.01" class="form-control fw-bold border-warning" required value="<%= quotation?.grand_total || '' %>">
+          </div>
+        </div>
+        <div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>Only the Grand Total is printed on the customer quotation PDF. Item-wise pricing is internal only.</div>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button type="submit" class="btn btn-warning"><i class="bi bi-check-lg me-1"></i><%= isEdit ? 'Update Quotation' : 'Create Quotation' %></button>
+      <a href="/solar-quotations" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<!-- Customer Search Modal -->
+<div class="modal fade" id="customerSearchModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Search Solar Customer</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="text" id="csSearch" class="form-control mb-3" placeholder="Type name or phone…" oninput="searchCustomers(this.value)">
+        <div id="csResults"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="hidden" id="items_json" name="items_json" value="<%= JSON.stringify(items) %>">
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const initialItems = <%- JSON.stringify(items) %>;
+let rows = initialItems.length ? initialItems.map(it => ({...it})) : [];
+
+function renderRows() {
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '';
+  rows.forEach((r, i) => {
+    tbody.innerHTML += `
+      <tr>
+        <td class="text-center align-middle">${i+1}</td>
+        <td><input class="form-control form-control-sm" value="${r.part_no||''}" onchange="rows[${i}].part_no=this.value; sync()"></td>
+        <td><input class="form-control form-control-sm" value="${r.description||''}" onchange="rows[${i}].description=this.value; sync()" placeholder="Description"></td>
+        <td><input type="number" class="form-control form-control-sm" value="${r.qty||1}" min="0" step="0.01" onchange="rows[${i}].qty=parseFloat(this.value)||0; calcRow(${i})" oninput="rows[${i}].qty=parseFloat(this.value)||0; calcRow(${i})"></td>
+        <td><input type="number" class="form-control form-control-sm" value="${r.rate||0}" min="0" step="0.01" onchange="rows[${i}].rate=parseFloat(this.value)||0; calcRow(${i})" oninput="rows[${i}].rate=parseFloat(this.value)||0; calcRow(${i})"></td>
+        <td><input type="number" class="form-control form-control-sm" value="${r.gst_rate||18}" min="0" step="0.5" onchange="rows[${i}].gst_rate=parseFloat(this.value)||0; calcRow(${i})" oninput="rows[${i}].gst_rate=parseFloat(this.value)||0; calcRow(${i})"></td>
+        <td><input type="number" class="form-control form-control-sm" value="${(r.amount||0).toFixed(2)}" readonly id="amt_${i}"></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger p-0 px-1" onclick="removeRow(${i})"><i class="bi bi-x"></i></button></td>
+      </tr>`;
+  });
+  sync();
+}
+
+function calcRow(i) {
+  const r = rows[i];
+  const base = (r.qty||0) * (r.rate||0);
+  const gstAmt = base * (r.gst_rate||0) / 100;
+  r.amount = parseFloat((base + gstAmt).toFixed(2));
+  const el = document.getElementById('amt_'+i);
+  if (el) el.value = r.amount.toFixed(2);
+  autoCalcTotal();
+  sync();
+}
+
+function autoCalcTotal() {
+  const tot = rows.reduce((s,r) => s + (r.amount||0), 0);
+  document.getElementById('total_amount').value = tot.toFixed(2);
+  calcGrandTotal();
+}
+
+function calcGrandTotal() {
+  const tot = parseFloat(document.getElementById('total_amount').value) || 0;
+  const disc = parseFloat(document.getElementById('discount_amount').value) || 0;
+  document.getElementById('grand_total').value = Math.round(tot - disc);
+}
+
+function addRow() {
+  rows.push({ part_no:'', description:'', qty:1, rate:0, gst_rate:18, amount:0 });
+  renderRows();
+}
+
+function removeRow(i) {
+  rows.splice(i, 1);
+  renderRows();
+}
+
+function sync() {
+  document.getElementById('items_json').value = JSON.stringify(rows);
+}
+
+renderRows();
+
+// Customer search
+let csModal;
+async function searchCustomers(q) {
+  if (!q) { document.getElementById('csResults').innerHTML=''; return; }
+  const res = await fetch('/solar-quotations/api/customers?q='+encodeURIComponent(q));
+  const list = await res.json();
+  if (!list.length) { document.getElementById('csResults').innerHTML='<p class="text-muted small">No customers found.</p>'; return; }
+  document.getElementById('csResults').innerHTML = list.map(c => `
+    <div class="border rounded p-2 mb-1 cursor-pointer" onclick='fillCustomer(${JSON.stringify(c)})' style="cursor:pointer">
+      <strong>${c.name}</strong> &mdash; ${c.phone||''}<br>
+      <small class="text-muted">${c.address||''}</small>
+    </div>`).join('');
+}
+
+function fillCustomer(c) {
+  document.getElementById('solar_customer_id').value  = c.id;
+  document.getElementById('customer_name').value      = c.name;
+  document.getElementById('customer_phone').value     = c.phone||'';
+  document.getElementById('customer_address').value   = c.address||'';
+  document.getElementById('consumer_number').value    = c.consumer_number||'';
+  document.getElementById('consumer_type').value      = c.consumer_type||'';
+  document.getElementById('sanction_load').value      = c.sanction_load||'';
+  document.getElementById('customer_email').value     = c.email||'';
+  bootstrap.Modal.getInstance(document.getElementById('customerSearchModal')).hide();
+}
+</script>
+</body></html>

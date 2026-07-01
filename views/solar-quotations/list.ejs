@@ -1,0 +1,88 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'solar-quotations', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-sun-fill me-2 text-warning"></i>Solar Quotations</h4>
+    <div class="d-flex gap-2">
+      <a href="/solar-quotations/customers" class="btn btn-outline-secondary btn-sm"><i class="bi bi-people me-1"></i>Solar Customers</a>
+      <a href="/solar-quotations/new" class="btn btn-warning"><i class="bi bi-plus-lg me-1"></i>New Quotation</a>
+    </div>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error) { %><div class="alert alert-danger alert-dismissible"><%= flash.error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <input name="q" value="<%= q %>" class="form-control form-control-sm" placeholder="Search quotation, customer, phone…">
+        </div>
+        <div class="col-md-2">
+          <select name="status" class="form-select form-select-sm">
+            <option value="">All Status</option>
+            <option value="draft"     <%= status==='draft'    ?'selected':'' %>>Draft</option>
+            <option value="sent"      <%= status==='sent'     ?'selected':'' %>>Sent</option>
+            <option value="approved"  <%= status==='approved' ?'selected':'' %>>Approved</option>
+            <option value="rejected"  <%= status==='rejected' ?'selected':'' %>>Rejected</option>
+            <option value="converted" <%= status==='converted'?'selected':'' %>>Converted</option>
+          </select>
+        </div>
+        <div class="col-md-2"><input type="date" name="from" value="<%= from %>" class="form-control form-control-sm"></div>
+        <div class="col-md-2"><input type="date" name="to" value="<%= to %>" class="form-control form-control-sm"></div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary btn-sm">Filter</button>
+          <a href="/solar-quotations" class="btn btn-outline-secondary btn-sm">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Quotations (<%= quotations.length %>)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Quotation No</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>System</th>
+            <th>Capacity</th>
+            <th class="text-end">Grand Total</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!quotations.length) { %>
+          <tr><td colspan="9" class="text-center text-muted py-4">No quotations found.</td></tr>
+          <% } %>
+          <% quotations.forEach(q => { %>
+          <tr>
+            <td><a href="/solar-quotations/<%= q.id %>" class="fw-semibold text-decoration-none"><%= q.quotation_no %></a></td>
+            <td><%= q.quotation_date ? new Date(q.quotation_date).toLocaleDateString('en-IN') : '-' %></td>
+            <td><%= q.customer_name %></td>
+            <td><%= q.customer_phone || '-' %></td>
+            <td><span class="badge bg-<%= q.system_type==='ONGRID'?'success':q.system_type==='OFFGRID'?'secondary':'info' %>"><%= q.system_type %></span></td>
+            <td><%= q.system_capacity ? q.system_capacity + ' KW' : '-' %></td>
+            <td class="text-end fw-semibold">₹<%= formatINR(q.grand_total) %></td>
+            <td>
+              <% const statusColors = {draft:'secondary',sent:'primary',approved:'success',rejected:'danger',converted:'warning'}; %>
+              <span class="badge bg-<%= statusColors[q.status]||'secondary' %>"><%= (q.status||'draft').toUpperCase() %></span>
+            </td>
+            <td>
+              <a href="/solar-quotations/<%= q.id %>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

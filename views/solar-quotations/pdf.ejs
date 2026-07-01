@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 10px; color: #000; background: #fff; -webkit-print-color-adjust: exact; }
+  .page { width: 210mm; padding: 5mm 6mm; }
+
+  /* Outer border */
+  .outer { width: 100%; border: 2px solid #e6a800; border-collapse: collapse; }
+  .outer td, .outer th { border: 1px solid #ccc; vertical-align: top; }
+
+  /* Title */
+  .title-row td { background: #fff9e6; text-align: center; padding: 7px 10px; border-bottom: 2px solid #e6a800; }
+  .doc-title { font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: #c47a00; }
+  .doc-sub   { font-size: 10px; font-weight: 700; color: #333; margin-top: 2px; }
+
+  /* Header: company left, customer right */
+  .co-block { padding: 7px 10px; width: 52%; border-right: 1.5px solid #e6a800; }
+  .co-name  { font-size: 17px; font-weight: 900; color: #c47a00; line-height: 1.1; }
+  .co-full  { font-size: 9px; color: #555; font-style: italic; margin-bottom: 4px; }
+  .co-line  { font-size: 9px; line-height: 1.8; }
+  .co-line b { font-weight: 700; }
+
+  .cust-block { padding: 7px 10px; }
+  .cust-table { width: 100%; border-collapse: collapse; }
+  .cust-table td { font-size: 9px; padding: 2px 4px; border: none; border-bottom: 1px solid #eee; }
+  .cust-table tr:last-child td { border-bottom: none; }
+  .ck { color: #666; white-space: nowrap; width: 42%; }
+  .cv { font-weight: 700; color: #000; }
+
+  /* Items table — description only, no prices */
+  .items-hdr { background: #fff3cc; padding: 5px 10px; font-size: 9.5px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1.5px solid #e6a800;
+    border-top: 1.5px solid #e6a800; }
+  table.items { width: 100%; border-collapse: collapse; }
+  table.items th { background: #fff9e6; font-size: 9px; text-align: center; padding: 4px 6px;
+    border: 1px solid #ddd; font-weight: 700; }
+  table.items td { font-size: 9.5px; padding: 4px 6px; border: 1px solid #ddd; }
+  table.items .srn { text-align: center; width: 30px; }
+  table.items .pno { font-family: 'Courier New', monospace; font-size: 8px; color: #555; width: 100px; }
+  table.items .desc { font-weight: 600; }
+  table.items .qty { text-align: center; width: 50px; }
+
+  /* Grand total section */
+  .total-section { background: #fff9e6; border-top: 2px solid #e6a800; }
+  .total-table { width: 100%; border-collapse: collapse; }
+  .total-table td { padding: 4px 10px; font-size: 10px; }
+  .total-label { text-align: right; color: #555; width: 70%; }
+  .total-val   { text-align: right; font-weight: 700; padding-right: 12px; }
+  .grand-row td { background: #e6a800 !important; color: #fff; font-size: 13px; font-weight: 900; }
+  .amount-words { padding: 5px 10px; font-size: 9px; font-style: italic; color: #333; border-top: 1px solid #eee; }
+
+  /* Payment & notes */
+  .pay-section { border-top: 1.5px solid #e6a800; }
+  .pay-inner   { width: 100%; border-collapse: collapse; }
+  .pay-inner td { font-size: 9px; padding: 3px 6px; border: none; border-bottom: 1px solid #eee; }
+  .pay-inner tr:last-child td { border-bottom: none; }
+  .pk { color: #666; width: 38%; }
+  .pv { font-weight: 700; }
+  .notes-box { font-size: 8.5px; color: #333; white-space: pre-wrap; line-height: 1.6; }
+
+  .section-hdr { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+    color: #c47a00; padding: 4px 10px; background: #fff9e6; border-bottom: 1px solid #e6a800; }
+
+  .scheme-banner { text-align: center; padding: 5px; font-size: 9.5px; font-weight: 800;
+    color: #c47a00; background: #fff3cc; border-top: 1.5px solid #e6a800; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="page">
+<table class="outer">
+
+  <!-- Title -->
+  <tr class="title-row">
+    <td colspan="2">
+      <div class="doc-title">Proforma Invoice</div>
+      <div class="doc-sub">
+        For Installation of Grid Connected Solar Roof Top
+        <%= q.system_capacity ? q.system_capacity + ' KW' : '' %> <%= q.system_type %>
+      </div>
+    </td>
+  </tr>
+
+  <!-- Header: Company | Customer -->
+  <tr>
+    <td class="co-block">
+      <div class="co-name"><%= s.solar_company_name || 'SAMBHAV' %></div>
+      <div class="co-full"><%= s.solar_company_fullname || 'SAMBHAV AGRO SOLUTION' %></div>
+      <div class="co-line">
+        <b>Address :</b> <%= s.solar_company_address || '' %><br>
+        <b>TEL :</b> <%= s.solar_tel || '' %> &nbsp;&nbsp; <b>OFFICE :</b> <%= s.solar_office || '' %><br>
+        <b>EMAIL :</b> <%= s.solar_email || '' %><br>
+        <b>Website :</b> <%= s.solar_website || '' %><br>
+        <b>GSTIN :</b> <%= s.solar_gstin || '' %>
+      </div>
+    </td>
+    <td class="cust-block">
+      <table class="cust-table">
+        <tr><td class="ck">NAME</td><td class="cv"><%= q.customer_name %></td></tr>
+        <tr><td class="ck">ADDRESS</td><td class="cv"><%= q.customer_address || 'N/A' %></td></tr>
+        <tr><td class="ck">PHONE NUMBER</td><td class="cv"><%= q.customer_phone || 'N/A' %></td></tr>
+        <tr><td class="ck">CONSUMER NUMBER</td><td class="cv"><%= q.consumer_number || 'N/A' %></td></tr>
+        <tr><td class="ck">CONSUMER TYPE</td><td class="cv"><%= q.consumer_type || 'N/A' %></td></tr>
+        <tr><td class="ck">SANCTION LOAD</td><td class="cv"><%= q.sanction_load || 'N/A' %></td></tr>
+        <tr><td class="ck">EMAIL ID</td><td class="cv"><%= q.customer_email || 'N/A' %></td></tr>
+        <tr><td class="ck">DATE</td><td class="cv"><%= q.quotation_date ? new Date(q.quotation_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '' %></td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Items (descriptions only, no individual pricing) -->
+  <tr>
+    <td colspan="2" style="padding:0">
+      <div class="items-hdr">Scope of Supply — Complete Solar System</div>
+      <table class="items">
+        <thead>
+          <tr>
+            <th class="srn">SRN</th>
+            <th class="pno">PART NO</th>
+            <th>DESCRIPTION</th>
+            <th class="qty">QTY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (items.length) { %>
+          <% items.forEach((it, i) => { %>
+          <tr>
+            <td class="srn"><%= i+1 %></td>
+            <td class="pno"><%= it.part_no || '' %></td>
+            <td class="desc"><%= it.description %></td>
+            <td class="qty"><%= it.qty %></td>
+          </tr>
+          <% }) %>
+          <% } else { %>
+          <tr><td colspan="4" style="text-align:center;padding:8px;color:#888">Complete solar rooftop system as per specification</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Totals -->
+  <tr>
+    <td colspan="2" class="total-section" style="padding:0">
+      <table class="total-table">
+        <% if (q.total_amount && q.discount_amount > 0) { %>
+        <tr>
+          <td class="total-label">TOTAL</td>
+          <td class="total-val">₹ <%= Number(q.total_amount).toLocaleString('en-IN') %></td>
+        </tr>
+        <tr>
+          <td class="total-label">DISCOUNT</td>
+          <td class="total-val">₹ <%= Number(q.discount_amount).toLocaleString('en-IN') %></td>
+        </tr>
+        <% } %>
+        <tr class="grand-row">
+          <td class="total-label" style="color:#fff">GRAND TOTAL</td>
+          <td class="total-val" style="color:#fff">₹ <%= Number(q.grand_total).toLocaleString('en-IN') %></td>
+        </tr>
+      </table>
+      <div class="amount-words"><i><%= numberToWords(Math.round(q.grand_total)) %></i></div>
+    </td>
+  </tr>
+
+  <!-- Payment Details -->
+  <tr>
+    <td colspan="2" class="pay-section" style="padding:0">
+      <div class="section-hdr">Payment Details — <%= s.solar_company_fullname || 'SAMBHAV AGRO SOLUTION' %></div>
+      <div style="display:flex">
+        <div style="flex:1;padding:6px 0;border-right:1px solid #eee">
+          <table class="pay-inner">
+            <tr><td class="pk">BENEFICIARY NAME</td><td class="pv"><%= s.solar_bank_beneficiary || '' %></td></tr>
+            <tr><td class="pk">ACCOUNT NUMBER</td><td class="pv"><%= s.solar_bank_account || '' %></td></tr>
+            <tr><td class="pk">IFSC CODE</td><td class="pv"><%= s.solar_bank_ifsc || '' %></td></tr>
+            <tr><td class="pk">BRANCH NAME</td><td class="pv"><%= s.solar_bank_branch || '' %></td></tr>
+            <tr><td class="pk">TEL</td><td class="pv"><%= s.solar_bank_tel || '' %></td></tr>
+          </table>
+        </div>
+        <% if (q.notes) { %>
+        <div style="flex:1;padding:6px 10px">
+          <div class="notes-box"><%= q.notes %></div>
+        </div>
+        <% } %>
+      </div>
+    </td>
+  </tr>
+
+  <!-- Scheme Banner -->
+  <% if (s.solar_scheme) { %>
+  <tr>
+    <td colspan="2" style="padding:0">
+      <div class="scheme-banner">&#9737; <%= s.solar_scheme %> &#9737;</div>
+    </td>
+  </tr>
+  <% } %>
+
+</table>
+</div>
+</body>
+</html>
