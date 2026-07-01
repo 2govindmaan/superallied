@@ -1,7 +1,6 @@
 <%
   const salesActive  = ['leads','visits','quotations','customers','machines','calculator','salespersons','route'].includes(active);
   const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports','stock'].includes(active);
-  const solarActive  = ['solar-quotations'].includes(active);
   const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses'].includes(active);
   const isAdmin      = user && user.role === 'admin';
   const isMgr        = user && (user.role === 'admin' || user.role === 'manager');
@@ -143,25 +142,6 @@
       </a>
       <% } %>
     </div>
-
-    <!-- ── SOLAR ───────────────────────────────────── -->
-    <% if (isAdmin || hasPerm('solar_quotations')) { %>
-    <div class="sb-section-hdr" onclick="toggleSection('solar')">
-      <i class="bi bi-chevron-right sb-chevron <%= solarActive?'open':'' %>"></i>
-      <i class="bi bi-sun-fill" style="color:#ffc107"></i>SOLAR
-    </div>
-    <div class="sb-section-body<%= solarActive?' show':'' %>" id="section-solar">
-      <a href="/solar-quotations" class="sb-link nav-link <%= active==='solar-quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-file-earmark-text-fill"></i>Solar Quotations
-      </a>
-      <a href="/solar-quotations/customers" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-people-fill"></i>Solar Customers
-      </a>
-      <a href="/solar-quotations/new" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-plus-circle-fill"></i>New Quotation
-      </a>
-    </div>
-    <% } %>
 
     <!-- ── HR ────────────────────────────────────── -->
     <div class="sb-section-hdr" onclick="toggleSection('hr')">

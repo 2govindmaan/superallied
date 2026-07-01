@@ -865,104 +865,12 @@ db.exec(`
   );
 `);
 
-// ── Solar Tables ──────────────────────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS solar_customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    address TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    consumer_number TEXT DEFAULT '',
-    consumer_type TEXT DEFAULT '',
-    sanction_load TEXT DEFAULT '',
-    email TEXT DEFAULT '',
-    notes TEXT DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS solar_quotations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quotation_no TEXT UNIQUE NOT NULL,
-    serial_number INTEGER NOT NULL,
-    financial_year TEXT NOT NULL,
-    solar_customer_id INTEGER REFERENCES solar_customers(id),
-    customer_name TEXT NOT NULL,
-    customer_address TEXT DEFAULT '',
-    customer_phone TEXT DEFAULT '',
-    consumer_number TEXT DEFAULT '',
-    consumer_type TEXT DEFAULT '',
-    sanction_load TEXT DEFAULT '',
-    customer_email TEXT DEFAULT '',
-    system_type TEXT DEFAULT 'ONGRID',
-    system_capacity REAL DEFAULT 0,
-    quotation_date DATE,
-    total_amount REAL DEFAULT 0,
-    discount_amount REAL DEFAULT 0,
-    grand_total REAL DEFAULT 0,
-    notes TEXT DEFAULT '',
-    status TEXT DEFAULT 'draft',
-    created_by INTEGER REFERENCES users(id),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS solar_quotation_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quotation_id INTEGER NOT NULL REFERENCES solar_quotations(id) ON DELETE CASCADE,
-    srn INTEGER DEFAULT 0,
-    part_no TEXT DEFAULT '',
-    description TEXT NOT NULL,
-    qty REAL DEFAULT 1,
-    rate REAL DEFAULT 0,
-    gst_rate REAL DEFAULT 18,
-    amount REAL DEFAULT 0
-  );
-  CREATE INDEX IF NOT EXISTS idx_solar_items_qid ON solar_quotation_items(quotation_id);
-`);
-
-// Solar settings defaults
-const solarDefaults = [
-  ['solar_company_name',    'SAMBHAV'],
-  ['solar_company_fullname','SAMBHAV AGRO SOLUTION'],
-  ['solar_company_address', 'KHASRA NO 370/1, AMAN VIHAR, MAWANA ROAD, MEERUT'],
-  ['solar_tel',             '+91-9084911100'],
-  ['solar_office',          '0121-3548974'],
-  ['solar_email',           'upsolar.in@gmail.com'],
-  ['solar_website',         'upsolar.in'],
-  ['solar_gstin',           '09CFXPM8541N2Z8'],
-  ['solar_bank_beneficiary','SAMBHAV AGRO SOLUTION'],
-  ['solar_bank_account',    '454101010051205'],
-  ['solar_bank_ifsc',       'UBIN0545414'],
-  ['solar_bank_branch',     'UNION BANK OF INDIA (RAJPURA, MEERUT, MAWANA ROAD 250001)'],
-  ['solar_bank_tel',        '9084911100'],
-  ['solar_scheme',          'PM SURYA GHAR MUFT BIJLI YOJANA'],
-];
-const insertSolarSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
-solarDefaults.forEach(([k, v]) => insertSolarSetting.run(k, v));
-
-// Solar permissions
-const solarPerms = [
-  ['manager','solar_quotations'],
-  ['office','solar_quotations'],
-  ['sales','solar_quotations'],
-];
-solarPerms.forEach(([r,p]) => { try { insertPerm.run(r,p); } catch(e) {} });
-
 function nextSpareQuotationNumber() {
   const fy = getFY();
   const row = db.prepare('SELECT MAX(serial_number) as max FROM spare_quotations WHERE financial_year = ?').get(fy);
   const serial = (row.max || 0) + 1;
   const padded = String(serial).padStart(4, '0');
   return { quotationNo: `SP-${fy}/${padded}`, financialYear: fy, serialNumber: serial };
-}
-
-function nextSolarQuotationNumber() {
-  const fy = getFY();
-  const row = db.prepare('SELECT MAX(serial_number) as max FROM solar_quotations WHERE financial_year = ?').get(fy);
-  const serial = (row.max || 0) + 1;
-  const padded = String(serial).padStart(4, '0');
-  return { quotationNo: `SOL-${fy}/${padded}`, financialYear: fy, serialNumber: serial };
 }
 
 function auditLog(userId, action, entity = '', entityId = '', details = '') {
@@ -972,4 +880,4 @@ function auditLog(userId, action, entity = '', entityId = '', details = '') {
   } catch(e) {}
 }
 
-module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, nextSolarQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog };
+module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog };

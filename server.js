@@ -25,7 +25,6 @@ const leadsRoutes           = require('./routes/leads');
 const soldMachinesRoutes    = require('./routes/sold-machines');
 const sparePartsRoutes      = require('./routes/spare-parts');
 const spareQuotationsRoutes = require('./routes/spare-quotations');
-const solarQuotationsRoutes = require('./routes/solar-quotations');
 const salespersonsRoutes    = require('./routes/salespersons');
 const stockRoutes           = require('./routes/stock');
 
@@ -793,7 +792,6 @@ app.use('/spare-parts',       requireLogin, requirePerm('spare_parts'),       sp
 app.use('/spare-quotations',  requireLogin, requirePerm('spare_quotations'),  spareQuotationsRoutes);
 app.use('/salespersons',      requireLogin, requirePerm('salespersons_admin'), salespersonsRoutes);
 app.use('/stock',             requireLogin, requirePerm('stock'),             stockRoutes);
-app.use('/solar-quotations',  requireLogin, requirePerm('solar_quotations'),   solarQuotationsRoutes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {
