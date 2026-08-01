@@ -387,18 +387,18 @@ const defaultPerms = [
   // manager
   ['manager','attendance'],['manager','hr_admin'],['manager','leave_approval'],
   ['manager','attendance_admin'],['manager','quotations'],['manager','customers'],
-  ['manager','salary_admin'],['manager','reports'],['manager','leads'],
+  ['manager','salary_admin'],['manager','reports'],['manager','enquiries'],
   ['manager','spare_quotations'],['manager','sold_machines'],['manager','spare_parts'],['manager','spare_reports'],['manager','stock'],
   ['manager','salespersons_admin'],
 
-  // sales — machine quotations, leads, visits, HR self-service
-  ['sales','quotations'],['sales','leads'],['sales','field_visit'],['sales','route_map'],
+  // sales — machine quotations, enquiries, visits, HR self-service
+  ['sales','quotations'],['sales','enquiries'],['sales','field_visit'],['sales','route_map'],
   ['sales','attendance'],['sales','expense_claim'],['sales','customers'],
 
-  // office — machine + spare quotations, sold machines, parts, leads, HR self-service
+  // office — machine + spare quotations, sold machines, parts, enquiries, HR self-service
   ['office','quotations'],['office','spare_quotations'],['office','sold_machines'],
   ['office','spare_parts'],['office','spare_reports'],['office','stock'],
-  ['office','leads'],['office','attendance'],['office','expense_claim'],['office','customers'],
+  ['office','enquiries'],['office','attendance'],['office','expense_claim'],['office','customers'],
 
   // service
   ['service','attendance'],['service','field_visit'],['service','route_map'],['service','expense_claim'],
@@ -407,7 +407,7 @@ const defaultPerms = [
   ['hr','attendance'],['hr','hr_admin'],['hr','leave_approval'],['hr','attendance_admin'],['hr','reports'],
 
   // staff (legacy alias for sales)
-  ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],['staff','leads'],
+  ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],['staff','enquiries'],
 
   // employee (attendance only)
   ['employee','attendance'],
@@ -865,6 +865,276 @@ db.exec(`
   );
 `);
 
+// ── Enquiry Management Tables (replaces legacy Lead Management) ──────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS enquiries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    enquiry_number TEXT UNIQUE NOT NULL,
+    customer_name TEXT NOT NULL,
+    phone TEXT DEFAULT '',
+    location TEXT DEFAULT '',
+    district TEXT DEFAULT '',
+    village_city TEXT DEFAULT '',
+    machine_interested TEXT DEFAULT '',
+    lead_source TEXT DEFAULT '',
+    assigned_to INTEGER REFERENCES users(id),
+    current_stage TEXT DEFAULT 'phone_followup',
+    status TEXT DEFAULT 'active',
+
+    machine_model TEXT DEFAULT '',
+    expected_purchase_date DATE,
+    quotation_sent INTEGER DEFAULT 0,
+    finance_required INTEGER DEFAULT 0,
+    budget REAL DEFAULT 0,
+    probability_percent INTEGER DEFAULT 0,
+
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_enq_phone    ON enquiries(phone);
+  CREATE INDEX IF NOT EXISTS idx_enq_assigned ON enquiries(assigned_to);
+  CREATE INDEX IF NOT EXISTS idx_enq_stage    ON enquiries(current_stage);
+  CREATE INDEX IF NOT EXISTS idx_enq_status   ON enquiries(status);
+  CREATE INDEX IF NOT EXISTS idx_enq_district ON enquiries(district);
+
+  CREATE TABLE IF NOT EXISTS enquiry_followups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    enquiry_id INTEGER NOT NULL REFERENCES enquiries(id) ON DELETE CASCADE,
+    next_followup_date DATE,
+    call_status TEXT DEFAULT 'Interested',
+    notes TEXT DEFAULT '',
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_fu_enquiry ON enquiry_followups(enquiry_id);
+  CREATE INDEX IF NOT EXISTS idx_fu_next    ON enquiry_followups(next_followup_date);
+
+  CREATE TABLE IF NOT EXISTS enquiry_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    enquiry_id INTEGER NOT NULL REFERENCES enquiries(id) ON DELETE CASCADE,
+    visit_date DATE,
+    visit_location TEXT DEFAULT '',
+    purpose TEXT DEFAULT '',
+    demo_given INTEGER DEFAULT 0,
+    competitor_machine TEXT DEFAULT '',
+    outcome TEXT DEFAULT '',
+    lat REAL,
+    lng REAL,
+    photo TEXT DEFAULT '',
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_visit_enquiry ON enquiry_visits(enquiry_id);
+
+  CREATE TABLE IF NOT EXISTS enquiry_quotations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quotation_number TEXT UNIQUE NOT NULL,
+    financial_year TEXT NOT NULL,
+    serial_number INTEGER NOT NULL,
+    enquiry_id INTEGER NOT NULL REFERENCES enquiries(id) ON DELETE CASCADE,
+    machine_model TEXT DEFAULT '',
+    validity_days INTEGER DEFAULT 15,
+    status TEXT DEFAULT 'draft',
+    remarks TEXT DEFAULT '',
+    total_amount REAL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_eq_enquiry ON enquiry_quotations(enquiry_id);
+
+  CREATE TABLE IF NOT EXISTS enquiry_quotation_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quotation_id INTEGER NOT NULL REFERENCES enquiry_quotations(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    qty REAL DEFAULT 1,
+    rate REAL DEFAULT 0,
+    line_total REAL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_eqi_quotation ON enquiry_quotation_items(quotation_id);
+
+  CREATE TABLE IF NOT EXISTS enquiry_sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    enquiry_id INTEGER NOT NULL REFERENCES enquiries(id) ON DELETE CASCADE,
+    invoice_number TEXT DEFAULT '',
+    machine_number TEXT DEFAULT '',
+    delivery_date DATE,
+    finance_company TEXT DEFAULT '',
+    sale_amount REAL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_sale_enquiry ON enquiry_sales(enquiry_id);
+
+  CREATE TABLE IF NOT EXISTS enquiry_remarks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    enquiry_id INTEGER NOT NULL REFERENCES enquiries(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_remark_enquiry ON enquiry_remarks(enquiry_id);
+
+  CREATE TABLE IF NOT EXISTS enquiry_attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    enquiry_id INTEGER NOT NULL REFERENCES enquiries(id) ON DELETE CASCADE,
+    activity_type TEXT DEFAULT 'enquiry',
+    activity_id INTEGER,
+    file_path TEXT NOT NULL,
+    file_type TEXT DEFAULT '',
+    uploaded_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_att_enquiry ON enquiry_attachments(enquiry_id);
+`);
+
+function nextEnquiryNumber() {
+  const ym = new Date().toISOString().slice(0, 7).replace('-', '');
+  const count = db.prepare("SELECT COUNT(*) as c FROM enquiries WHERE enquiry_number LIKE ?").get(`ENQ-${ym}-%`).c;
+  return `ENQ-${ym}-${String(count + 1).padStart(4, '0')}`;
+}
+
+function nextEnquiryQuotationNumber() {
+  const fy = getFY();
+  const row = db.prepare('SELECT MAX(serial_number) as max FROM enquiry_quotations WHERE financial_year = ?').get(fy);
+  const serial = (row.max || 0) + 1;
+  const padded = String(serial).padStart(4, '0');
+  return { quotationNumber: `EQ-${fy}/${padded}`, financialYear: fy, serialNumber: serial };
+}
+
+// Merged, time-ordered timeline for one enquiry — remarks/followups/visits/quotations/sale/system events.
+function getEnquiryTimeline(enquiryId) {
+  const rows = db.prepare(`
+    SELECT r.id, 'remark' as type, r.created_at, r.created_by, r.body as text, r.id as ref_id
+    FROM enquiry_remarks r WHERE r.enquiry_id = ?
+    UNION ALL
+    SELECT f.id, 'followup', f.created_at, f.created_by,
+      'Call status: ' || f.call_status || COALESCE(NULLIF(' — ' || f.notes, ' — '), '') ||
+      COALESCE(NULLIF(' | Next follow-up: ' || f.next_followup_date, ' | Next follow-up: '), ''),
+      f.id
+    FROM enquiry_followups f WHERE f.enquiry_id = ?
+    UNION ALL
+    SELECT v.id, 'visit', v.created_at, v.created_by,
+      'Visit to ' || COALESCE(NULLIF(v.visit_location,''), 'site') ||
+      COALESCE(NULLIF(' — ' || v.purpose, ' — '), '') ||
+      COALESCE(NULLIF(' | Outcome: ' || v.outcome, ' | Outcome: '), ''),
+      v.id
+    FROM enquiry_visits v WHERE v.enquiry_id = ?
+    UNION ALL
+    SELECT q.id, 'quotation', q.created_at, q.created_by,
+      'Quotation ' || q.quotation_number || COALESCE(NULLIF(' (' || q.machine_model || ')', ' ()'), '') || ' — ' || q.status,
+      q.id
+    FROM enquiry_quotations q WHERE q.enquiry_id = ?
+    UNION ALL
+    SELECT s.id, 'sale', s.created_at, s.created_by,
+      'Sale closed — Invoice ' || COALESCE(NULLIF(s.invoice_number,''),'—') || ', Machine ' || COALESCE(NULLIF(s.machine_number,''),'—'),
+      s.id
+    FROM enquiry_sales s WHERE s.enquiry_id = ?
+    UNION ALL
+    SELECT a.id, 'system', a.created_at, a.user_id,
+      a.action || COALESCE(NULLIF(' — ' || a.details, ' — '), ''),
+      NULL
+    FROM audit_log a WHERE a.entity = 'enquiries' AND a.entity_id = ?
+      AND a.action NOT IN ('ENQUIRY_QUOTATION_CREATED', 'ENQUIRY_SALE_CLOSED')
+    ORDER BY created_at DESC, id DESC
+  `).all(enquiryId, enquiryId, enquiryId, enquiryId, enquiryId, String(enquiryId));
+
+  const userIds = [...new Set(rows.map(r => r.created_by).filter(Boolean))];
+  const users = userIds.length
+    ? db.prepare(`SELECT id, full_name, username FROM users WHERE id IN (${userIds.map(() => '?').join(',')})`).all(...userIds)
+    : [];
+  const userMap = Object.fromEntries(users.map(u => [u.id, u.full_name || u.username]));
+
+  const attachments = db.prepare('SELECT * FROM enquiry_attachments WHERE enquiry_id=?').all(enquiryId);
+  return rows.map(r => ({
+    ...r,
+    user_name: userMap[r.created_by] || 'System',
+    attachments: attachments.filter(a => a.activity_type === r.type && a.activity_id === r.ref_id),
+  }));
+}
+
+// Idempotent: notifies the assignee once per day about a due/overdue follow-up.
+function checkFollowupNotifications(userId) {
+  const today = new Date().toISOString().slice(0, 10);
+  const due = db.prepare(`
+    SELECT e.id, e.enquiry_number, e.customer_name, f.next_followup_date
+    FROM enquiries e
+    JOIN (
+      SELECT enquiry_id, MAX(next_followup_date) as next_followup_date
+      FROM enquiry_followups WHERE next_followup_date IS NOT NULL
+      GROUP BY enquiry_id
+    ) f ON f.enquiry_id = e.id
+    WHERE e.assigned_to = ? AND e.status = 'active' AND f.next_followup_date <= ?
+  `).all(userId, today);
+
+  due.forEach(d => {
+    const link = `/enquiries/${d.id}`;
+    const already = db.prepare(`SELECT id FROM notifications WHERE user_id=? AND link=? AND date(created_at)=?`)
+      .get(userId, link, today);
+    if (already) return;
+    const overdue = d.next_followup_date < today;
+    createNotification(userId,
+      overdue ? 'Missed Follow-up' : 'Follow-up Due Today',
+      `${d.customer_name} (${d.enquiry_number}) — follow-up was due ${d.next_followup_date}`,
+      overdue ? 'warning' : 'info', link);
+  });
+}
+
+// ── One-time migration: legacy leads → enquiries (never drops the leads table) ─
+(function migrateLeadsToEnquiries() {
+  // Rename any leftover 'leads' permission rows to 'enquiries', avoiding UNIQUE conflicts.
+  try {
+    db.exec(`DELETE FROM role_permissions WHERE permission='leads' AND EXISTS
+      (SELECT 1 FROM role_permissions rp2 WHERE rp2.role = role_permissions.role AND rp2.permission='enquiries')`);
+    db.exec(`UPDATE role_permissions SET permission='enquiries' WHERE permission='leads'`);
+  } catch (e) {}
+
+  const alreadyMigrated = db.prepare("SELECT value FROM settings WHERE key='leads_migrated_v1'").get();
+  if (alreadyMigrated) return;
+
+  const leadsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='leads'").get();
+  if (!leadsTableExists) {
+    db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('leads_migrated_v1','1')").run();
+    return;
+  }
+
+  const leads = db.prepare('SELECT * FROM leads').all();
+  const stageMap = { 1: 'phone_followup', 2: 'sales_visit', 3: 'sales_visit', 4: 'enquiry_generated', 5: 'sales_closed' };
+  const stageLabels = { 1: 'Initial Enquiry', 2: 'Finance Investigation', 3: 'Loan Processing', 4: 'Delivery Order', 5: 'Post Delivery' };
+
+  const insertEnq = db.prepare(`INSERT OR IGNORE INTO enquiries
+    (enquiry_number, customer_name, phone, location, district, village_city, machine_interested,
+     lead_source, assigned_to, current_stage, status, expected_purchase_date, created_by, created_at, updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  const insertVisit  = db.prepare(`INSERT INTO enquiry_visits (enquiry_id, visit_date, created_by, created_at) VALUES (?,?,?,?)`);
+  const insertRemark = db.prepare(`INSERT INTO enquiry_remarks (enquiry_id, body, created_by, created_at) VALUES (?,?,?,?)`);
+
+  leads.forEach(l => {
+    insertEnq.run(
+      l.lead_number, l.customer_name, l.customer_phone || '', l.village_city || l.dealer_location || '',
+      l.district || '', l.village_city || '', l.model_required || '', 'Migrated',
+      l.created_by, stageMap[l.current_stage] || 'phone_followup', l.status || 'active',
+      l.expected_purchase_date || null, l.created_by, l.created_at, l.updated_at
+    );
+    const enq = db.prepare('SELECT id FROM enquiries WHERE enquiry_number=?').get(l.lead_number);
+    if (!enq) return;
+
+    ['visit1_date', 'visit2_date', 'visit3_date'].forEach(v => {
+      if (l[v]) insertVisit.run(enq.id, l[v], l.created_by, l[v]);
+    });
+
+    insertRemark.run(enq.id,
+      `Migrated from legacy Lead ${l.lead_number} (was stage ${l.current_stage}: ${stageLabels[l.current_stage] || 'Unknown'}). ` +
+      `Original finance/loan/delivery data preserved below for audit purposes.\n\n${JSON.stringify(l, null, 2)}`,
+      l.created_by, l.updated_at || l.created_at
+    );
+  });
+
+  db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('leads_migrated_v1','1')").run();
+  if (leads.length) console.log(`[migration] Migrated ${leads.length} legacy leads → enquiries.`);
+})();
+
 function nextSpareQuotationNumber() {
   const fy = getFY();
   const row = db.prepare('SELECT MAX(serial_number) as max FROM spare_quotations WHERE financial_year = ?').get(fy);
@@ -880,4 +1150,4 @@ function auditLog(userId, action, entity = '', entityId = '', details = '') {
   } catch(e) {}
 }
 
-module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog };
+module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog, nextEnquiryNumber, nextEnquiryQuotationNumber, getEnquiryTimeline, checkFollowupNotifications };

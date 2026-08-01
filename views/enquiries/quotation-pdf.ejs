@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; -webkit-print-color-adjust: exact; }
+  .page { width: 210mm; padding: 10mm 12mm; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+  .co-name { font-size: 20px; font-weight: 900; }
+  .co-dealer { font-size: 10px; color: #444; font-style: italic; margin: 2px 0; }
+  .co-line { font-size: 9.5px; line-height: 1.6; color: #333; }
+  .logo { height: 45px; }
+  .qno-block { text-align: right; }
+  .doc-title { font-size: 16px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+  .qno { font-size: 12px; font-weight: 700; margin-top: 4px; }
+  .meta-line { font-size: 9.5px; color: #555; }
+  .buyer { margin: 10px 0; padding: 8px; background: #f8f8f8; border: 1px solid #ddd; }
+  .buyer-label { font-size: 8.5px; text-transform: uppercase; color: #666; font-weight: 700; }
+  .buyer-name { font-size: 13px; font-weight: 700; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  table.items th { background: #222; color: #fff; font-size: 9.5px; padding: 6px; text-align: left; }
+  table.items td { border: 1px solid #ddd; padding: 6px; font-size: 10px; }
+  table.items .tr { text-align: right; }
+  .total-row td { font-weight: 900; font-size: 12px; background: #f0f0f0; }
+  .remarks { margin-top: 14px; font-size: 9.5px; color: #333; }
+  .footer { margin-top: 30px; display: flex; justify-content: space-between; }
+  .sig-line { border-top: 1px solid #000; padding-top: 4px; font-size: 9.5px; text-align: center; width: 180px; }
+  .validity { margin-top: 6px; font-size: 9.5px; font-style: italic; color: #555; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <% if (logoB64) { %><img src="<%= logoB64 %>" class="logo"><% } %>
+      <div class="co-name"><%= settings.company_name || 'Super Allied' %></div>
+      <div class="co-dealer">Authorised Dealer — <%= settings.dealer_of || 'Bull Construction Equipment Pvt. Ltd.' %></div>
+      <div class="co-line"><%= settings.company_address || '' %></div>
+      <div class="co-line">GSTIN: <%= settings.company_gstin || '' %> &nbsp; | &nbsp; Phone: <%= settings.contact_phone || '' %></div>
+    </div>
+    <div class="qno-block">
+      <div class="doc-title">Quotation</div>
+      <div class="qno"><%= q.quotation_number %></div>
+      <div class="meta-line">Date: <%= new Date(q.created_at).toLocaleDateString('en-IN') %></div>
+    </div>
+  </div>
+
+  <div class="buyer">
+    <div class="buyer-label">Quotation For</div>
+    <div class="buyer-name"><%= enquiry.customer_name %></div>
+    <div class="meta-line"><%= [enquiry.village_city, enquiry.district].filter(Boolean).join(', ') %><% if (enquiry.phone) { %> &nbsp;|&nbsp; <%= enquiry.phone %><% } %></div>
+    <div class="meta-line">Enquiry Ref: <%= enquiry.enquiry_number %><% if (q.machine_model) { %> &nbsp;|&nbsp; Machine: <%= q.machine_model %><% } %></div>
+  </div>
+
+  <table class="items">
+    <thead><tr><th style="width:10%">#</th><th>Description</th><th class="tr" style="width:12%">Qty</th><th class="tr" style="width:18%">Rate (₹)</th><th class="tr" style="width:20%">Amount (₹)</th></tr></thead>
+    <tbody>
+      <% items.forEach((it, i) => { %>
+      <tr><td><%= i+1 %></td><td><%= it.description %></td><td class="tr"><%= it.qty %></td><td class="tr"><%= formatINR(it.rate) %></td><td class="tr"><%= formatINR(it.line_total) %></td></tr>
+      <% }) %>
+      <tr class="total-row"><td colspan="4" class="tr">Grand Total</td><td class="tr">₹<%= formatINR(q.total_amount) %></td></tr>
+    </tbody>
+  </table>
+
+  <div class="validity">Valid for <%= q.validity_days %> days from the date of issue. Prices are subject to change without notice.</div>
+  <% if (q.remarks) { %><div class="remarks"><strong>Remarks:</strong> <%= q.remarks %></div><% } %>
+
+  <div class="footer">
+    <div></div>
+    <div class="sig-line">For <%= settings.company_name || 'Super Allied' %></div>
+  </div>
+</div>
+</body>
+</html>

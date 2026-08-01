@@ -1,5 +1,5 @@
 <%
-  const salesActive  = ['leads','visits','quotations','customers','machines','calculator','salespersons','route'].includes(active);
+  const salesActive  = ['enquiries','visits','quotations','customers','machines','calculator','salespersons','route'].includes(active);
   const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports','stock'].includes(active);
   const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses'].includes(active);
   const isAdmin      = user && user.role === 'admin';
@@ -69,9 +69,15 @@
       <i class="bi bi-graph-up-arrow"></i>SALES
     </div>
     <div class="sb-section-body<%= salesActive?' show':'' %>" id="section-sales">
-      <% if (isAdmin || isMgr || hasPerm('leads')) { %>
-      <a href="/leads" class="sb-link nav-link <%= active==='leads'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-funnel-fill"></i>Lead Management
+      <% if (isAdmin || isMgr || hasPerm('enquiries')) { %>
+      <a href="/enquiries" class="sb-link nav-link <%= active==='enquiries'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-funnel-fill"></i>Enquiries
+      </a>
+      <a href="/enquiries/pipeline" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-kanban"></i>Enquiry Pipeline
+      </a>
+      <a href="/enquiries/dashboard" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-bar-chart-fill"></i>Enquiry Dashboard
       </a>
       <% } %>
       <% if (isAdmin || hasPerm('field_visit')) { %>

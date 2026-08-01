@@ -4,7 +4,7 @@ const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
 const path     = require('path');
 const fs       = require('fs');
-const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification, getUserPermissions } = require('./db');
+const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification, getUserPermissions, checkFollowupNotifications } = require('./db');
 const { generatePDF } = require('./pdf');
 
 // ── File storage setup ────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ const notifyRoutes     = require('./routes/notify');
 const visitsRoutes     = require('./routes/visits');
 const expensesRoutes   = require('./routes/expenses');
 const machinesRoutes        = require('./routes/machines');
-const leadsRoutes           = require('./routes/leads');
+const enquiriesRoutes       = require('./routes/enquiries');
 const soldMachinesRoutes    = require('./routes/sold-machines');
 const sparePartsRoutes      = require('./routes/spare-parts');
 const spareQuotationsRoutes = require('./routes/spare-quotations');
@@ -96,6 +96,9 @@ app.use((req, res, next) => {
     const perms = getUserPermissions(u.role);
     res.locals.hasPerm = (p) => perms.includes('*') || perms.includes(p);
     res.locals._perms  = perms;
+    if (perms.includes('*') || perms.includes('enquiries')) {
+      try { checkFollowupNotifications(u.id); } catch (e) {}
+    }
   } else {
     res.locals.hasPerm = () => false;
     res.locals._perms  = [];
@@ -626,6 +629,24 @@ app.get('/api/search', requireLogin, (req, res) => {
       });
     });
 
+    // Search enquiries by number, customer name, or phone
+    const enquiries = db.prepare(`
+      SELECT id, enquiry_number, customer_name, phone, current_stage
+      FROM enquiries
+      WHERE LOWER(enquiry_number) LIKE ? OR LOWER(customer_name) LIKE ? OR phone LIKE ?
+      ORDER BY updated_at DESC
+      LIMIT ?
+    `).all(`%${query}%`, `%${query}%`, `%${query}%`, limit);
+
+    enquiries.forEach(e => {
+      results.push({
+        category: 'Enquiries',
+        title: `${e.enquiry_number} — ${e.customer_name}`,
+        meta: e.phone || '',
+        link: `/enquiries/${e.id}`
+      });
+    });
+
     // Search customers by name or phone
     const customers = db.prepare(`
       SELECT id, name, phone, gstin
@@ -663,22 +684,21 @@ app.get('/api/search', requireLogin, (req, res) => {
       });
     });
 
-    // Search spare parts by part_number or name
+    // Search spare parts by part number or description
     const spareParts = db.prepare(`
-      SELECT id, part_number, name, rate
+      SELECT id, sap_part_no, rnd_part_no, material_description, mrp_price
       FROM spare_parts
-      WHERE active=1 AND (
-        LOWER(part_number) LIKE ?
-        OR LOWER(name) LIKE ?
-      )
+      WHERE LOWER(sap_part_no) LIKE ?
+        OR LOWER(rnd_part_no) LIKE ?
+        OR LOWER(material_description) LIKE ?
       LIMIT ?
-    `).all(`%${query}%`, `%${query}%`, limit);
+    `).all(`%${query}%`, `%${query}%`, `%${query}%`, limit);
 
     spareParts.forEach(p => {
       results.push({
         category: 'Spare Parts',
-        title: `${p.part_number} - ${p.name}`,
-        meta: `₹${p.rate.toLocaleString('en-IN')}`,
+        title: `${p.sap_part_no || p.rnd_part_no} - ${p.material_description}`,
+        meta: p.mrp_price ? `₹${p.mrp_price.toLocaleString('en-IN')}` : '',
         link: `/spare-parts`
       });
     });
@@ -732,7 +752,7 @@ app.get('/api/search', requireLogin, (req, res) => {
 app.post('/api/upload', requireLogin, (req, res) => {
   const { data, folder } = req.body;
   if (!data?.startsWith('data:image')) return res.status(400).json({ error: 'Invalid image data' });
-  const allowedFolders = ['attendance', 'employees', 'visits', 'expenses'];
+  const allowedFolders = ['attendance', 'employees', 'visits', 'expenses', 'enquiries'];
   const safe = allowedFolders.includes(folder) ? folder : 'misc';
   const dir  = path.join(UPLOADS_DIR, safe);
   fs.mkdirSync(dir, { recursive: true });
@@ -786,7 +806,7 @@ app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
 app.use('/visits',        requireLogin, visitsRoutes);
 app.use('/expenses',      requireLogin, expensesRoutes);
 app.use('/machines',          requireLogin, requireManagerOrAdmin, machinesRoutes);
-app.use('/leads',             requireLogin, leadsRoutes);
+app.use('/enquiries',         requireLogin, requirePerm('enquiries'),        enquiriesRoutes);
 app.use('/sold-machines',     requireLogin, requirePerm('sold_machines'),    soldMachinesRoutes);
 app.use('/spare-parts',       requireLogin, requirePerm('spare_parts'),       sparePartsRoutes);
 app.use('/spare-quotations',  requireLogin, requirePerm('spare_quotations'),  spareQuotationsRoutes);

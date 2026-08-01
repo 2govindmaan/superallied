@@ -1,0 +1,138 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'enquiries', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-funnel-fill text-danger me-2"></i>Enquiries</h4>
+    <div class="d-flex gap-2">
+      <a href="/enquiries/pipeline" class="btn btn-outline-secondary btn-sm"><i class="bi bi-kanban me-1"></i>Pipeline</a>
+      <a href="/enquiries/dashboard" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bar-chart me-1"></i>Dashboard</a>
+      <a href="/enquiries/export<%= q||stage||status||district||machine||lead_source||from||to ? `?q=${q}&stage=${stage}&status=${status}&district=${district}&machine=${machine}&lead_source=${lead_source}&from=${from}&to=${to}` : '' %>" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel me-1"></i>Export</a>
+      <a href="/enquiries/new" class="btn btn-danger btn-sm"><i class="bi bi-plus-lg me-1"></i>New Enquiry</a>
+    </div>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible py-2"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error) { %><div class="alert alert-danger alert-dismissible py-2"><%= flash.error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <!-- Stage quick-filter pills -->
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="/enquiries?status=active" class="badge rounded-pill text-decoration-none fs-6 <%= !stage && status==='active' ? 'bg-dark' : 'bg-secondary' %>">All Active</a>
+    <% Object.keys(STAGES).forEach(sk => { %>
+    <a href="/enquiries?stage=<%= sk %>&status=active" class="badge rounded-pill text-decoration-none fs-6 <%= stage===sk ? 'bg-danger' : 'bg-light text-dark border' %>">
+      <%= STAGES[sk].label %>
+    </a>
+    <% }) %>
+    <a href="/enquiries?status=won" class="badge rounded-pill text-decoration-none fs-6 <%= status==='won' ? 'bg-success' : 'bg-light text-dark border' %>">Won</a>
+    <a href="/enquiries?status=lost" class="badge rounded-pill text-decoration-none fs-6 <%= status==='lost' ? 'bg-danger' : 'bg-light text-dark border' %>">Lost</a>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-end">
+        <input type="hidden" name="status" value="<%= status %>">
+        <div class="col-12 col-md-3">
+          <input type="text" class="form-control form-control-sm" name="q" value="<%= q %>" placeholder="Name, phone, village, district, enquiry#…">
+        </div>
+        <div class="col-6 col-md-2">
+          <select class="form-select form-select-sm" name="stage">
+            <option value="">All Stages</option>
+            <% Object.keys(STAGES).forEach(sk => { %><option value="<%= sk %>" <%= stage===sk?'selected':'' %>><%= STAGES[sk].label %></option><% }) %>
+          </select>
+        </div>
+        <% if (allAccess) { %>
+        <div class="col-6 col-md-2">
+          <select class="form-select form-select-sm" name="assigned_to">
+            <option value="">All Salespersons</option>
+            <% staff.forEach(s => { %><option value="<%= s.id %>" <%= String(assigned_to)===String(s.id)?'selected':'' %>><%= s.full_name %></option><% }) %>
+          </select>
+        </div>
+        <% } %>
+        <div class="col-6 col-md-2">
+          <input type="text" class="form-control form-control-sm" name="district" value="<%= district %>" placeholder="District">
+        </div>
+        <div class="col-6 col-md-2">
+          <select class="form-select form-select-sm" name="lead_source">
+            <option value="">All Sources</option>
+            <% LEAD_SOURCES.forEach(s => { %><option value="<%= s %>" <%= lead_source===s?'selected':'' %>><%= s %></option><% }) %>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-search me-1"></i>Filter</button>
+          <a href="/enquiries" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+      <span class="fw-semibold text-muted small"><%= total %> enquiries found</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Enquiry #</th>
+            <th>Customer</th>
+            <th>Machine</th>
+            <th>Location</th>
+            <th>Stage</th>
+            <th>Status</th>
+            <% if (allAccess) { %><th>Assigned To</th><% } %>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!enquiries.length) { %>
+          <tr><td colspan="9" class="text-center text-muted py-4">No enquiries found. <a href="/enquiries/new">Create one</a></td></tr>
+          <% } %>
+          <% enquiries.forEach(e => { %>
+          <tr>
+            <td><a href="/enquiries/<%= e.id %>" class="fw-semibold text-danger text-decoration-none"><%= e.enquiry_number %></a></td>
+            <td>
+              <div class="fw-semibold"><%= e.customer_name %></div>
+              <% if (e.phone) { %><small class="text-muted"><%= e.phone %></small><% } %>
+            </td>
+            <td><%= e.machine_model || e.machine_interested || '—' %></td>
+            <td>
+              <div><%= e.village_city || e.location || '—' %></div>
+              <% if (e.district) { %><small class="text-muted"><%= e.district %></small><% } %>
+            </td>
+            <td>
+              <% if (e.status === 'active') { %>
+              <span class="badge bg-<%= STAGES[e.current_stage]?.color || 'secondary' %>"><%= STAGES[e.current_stage]?.label || e.current_stage %></span>
+              <% } else { %>—<% } %>
+            </td>
+            <td>
+              <span class="badge <%= e.status==='active'?'bg-light text-dark border':e.status==='won'?'bg-success':'bg-danger' %>">
+                <%= e.status.charAt(0).toUpperCase()+e.status.slice(1) %>
+              </span>
+            </td>
+            <% if (allAccess) { %><td><small class="text-muted"><%= e.assignee_name || '—' %></small></td><% } %>
+            <td><small class="text-muted"><%= new Date(e.updated_at).toLocaleDateString('en-IN') %></small></td>
+            <td>
+              <a href="/enquiries/<%= e.id %>" class="btn btn-xs btn-outline-secondary py-0 px-1"><i class="bi bi-eye"></i></a>
+              <a href="/enquiries/<%= e.id %>/edit" class="btn btn-xs btn-outline-primary py-0 px-1"><i class="bi bi-pencil"></i></a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% if (totalPages > 1) { %>
+    <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+      <small class="text-muted">Page <%= page %> of <%= totalPages %></small>
+      <div class="d-flex gap-1">
+        <% const qs = (p) => `?q=${encodeURIComponent(q)}&stage=${stage}&status=${status}&assigned_to=${assigned_to}&district=${encodeURIComponent(district)}&lead_source=${lead_source}&page=${p}`; %>
+        <a class="btn btn-sm btn-outline-secondary <%= page<=1?'disabled':'' %>" href="<%= qs(page-1) %>">Prev</a>
+        <a class="btn btn-sm btn-outline-secondary <%= page>=totalPages?'disabled':'' %>" href="<%= qs(page+1) %>">Next</a>
+      </div>
+    </div>
+    <% } %>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

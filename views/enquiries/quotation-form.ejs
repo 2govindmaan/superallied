@@ -1,0 +1,86 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'enquiries', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text-fill text-danger me-2"></i>New Quotation — <%= enquiry.enquiry_number %></h4>
+    <a href="/enquiries/<%= enquiry.id %>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <form method="post" action="/enquiries/<%= enquiry.id %>/quotations">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Customer</label>
+            <input type="text" class="form-control" value="<%= enquiry.customer_name %>" disabled>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Machine Model</label>
+            <input type="text" class="form-control" name="machine_model" value="<%= enquiry.machine_model || enquiry.machine_interested || '' %>">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Validity (days)</label>
+            <input type="number" class="form-control" name="validity_days" value="15">
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Remarks</label>
+            <textarea class="form-control" name="remarks" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold small">Line Items</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addItem()"><i class="bi bi-plus-lg"></i> Add Item</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-0" id="itemsTable">
+          <thead class="table-light"><tr><th>Description</th><th style="width:100px">Qty</th><th style="width:140px">Rate (₹)</th><th style="width:140px">Total (₹)</th><th style="width:40px"></th></tr></thead>
+          <tbody id="itemsBody"></tbody>
+          <tfoot><tr><td colspan="3" class="text-end fw-semibold">Grand Total</td><td class="fw-bold" id="grandTotal">₹0.00</td><td></td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <input type="hidden" name="items_json" id="itemsJson">
+    <button type="submit" class="btn btn-danger" onclick="return finalizeItems()"><i class="bi bi-check-lg me-1"></i>Create Quotation</button>
+    <a href="/enquiries/<%= enquiry.id %>" class="btn btn-outline-secondary">Cancel</a>
+  </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let items = [];
+
+function addItem() {
+  items.push({ description: '', qty: 1, rate: 0, line_total: 0 });
+  renderItems();
+}
+function removeItem(i) { items.splice(i, 1); renderItems(); }
+function updateItem(i, field, val) {
+  items[i][field] = field === 'description' ? val : parseFloat(val) || 0;
+  if (field === 'qty' || field === 'rate') items[i].line_total = items[i].qty * items[i].rate;
+  renderItems();
+}
+function renderItems() {
+  const body = document.getElementById('itemsBody');
+  body.innerHTML = items.map((it, i) => `
+    <tr>
+      <td><input class="form-control form-control-sm" value="${it.description}" oninput="updateItem(${i},'description',this.value)"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${it.qty}" oninput="updateItem(${i},'qty',this.value)"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${it.rate}" oninput="updateItem(${i},'rate',this.value)"></td>
+      <td class="text-end">${it.line_total.toLocaleString('en-IN',{minimumFractionDigits:2})}</td>
+      <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
+    </tr>`).join('');
+  const total = items.reduce((s, it) => s + it.line_total, 0);
+  document.getElementById('grandTotal').textContent = '₹' + total.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+function finalizeItems() {
+  if (!items.length) { alert('Add at least one line item.'); return false; }
+  document.getElementById('itemsJson').value = JSON.stringify(items);
+  return true;
+}
+addItem();
+</script>
+</body></html>
