@@ -91,7 +91,8 @@
     </div>
     <div class="customer-right">
       <strong>Date :</strong> <%= new Date(q.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase() %><br>
-      <strong>Quotation Number</strong> - <%= q.quotation_number %>
+      <strong>Quotation Number</strong> - <%= q.quotation_number %><br>
+      <% if (q.salesperson_name) { %><strong>Salesperson</strong> - <%= q.salesperson_name %><% if (q.salesperson_phone) { %> (<%= q.salesperson_phone %>)<% } %><% } %>
     </div>
   </div>
 

@@ -53,6 +53,17 @@
         </div>
       </div>
     </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Salesperson</div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-4 text-muted">Name</dt><dd class="col-8 fw-semibold"><%= q.salesperson_name || '—' %></dd>
+            <dt class="col-4 text-muted">Phone</dt><dd class="col-8"><%= q.salesperson_phone || '—' %></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
     <div class="col-12">
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-semibold">Price Breakdown</div>
