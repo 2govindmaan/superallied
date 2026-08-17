@@ -54,9 +54,7 @@
              justify-content: center; font-size: 9px; color: #888; text-align: center; }
 
   .footer { margin-top: 9px; font-size: 11px; font-weight: bold;
-            border-top: 1px solid #ccc; padding-top: 6px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .stamp-area { width: 100px; height: 100px; text-align: center; display: flex; align-items: center; justify-content: center; }
-  .stamp-img { width: 100%; height: 100%; object-fit: contain; }
+            border-top: 1px solid #ccc; padding-top: 6px; }
 </style>
 </head>
 <body>
@@ -233,16 +231,7 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    <div>For Further Info - Please contact - <%= q.salesperson_name || settings.contact_name %> - <%= q.salesperson_phone || settings.contact_phone %></div>
-    <div class="stamp-area">
-      <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="48" fill="none" stroke="#1a3a70" stroke-width="2"/>
-        <circle cx="50" cy="50" r="45" fill="none" stroke="#1a3a70" stroke-width="1"/>
-        <text x="50" y="35" font-size="16" font-weight="bold" text-anchor="middle" fill="#1a3a70" font-family="Arial">SUPER ALLIED</text>
-        <text x="50" y="65" font-size="14" font-weight="bold" text-anchor="middle" fill="#1a3a70" font-family="Arial">MEERUT</text>
-        <circle cx="50" cy="50" r="55" fill="none" stroke="#1a3a70" stroke-width="0.5" stroke-dasharray="2,2"/>
-      </svg>
-    </div>
+    For Further Info - Please contact - <%= q.salesperson_name || settings.contact_name %> - <%= q.salesperson_phone || settings.contact_phone %>
   </div>
 
 </div>
