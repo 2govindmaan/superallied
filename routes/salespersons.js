@@ -100,13 +100,27 @@ router.post('/:id', (req, res) => {
   }
 });
 
-// ── POST /salespersons/:id/delete – Delete salesperson ───────────────────────
+// ── POST /salespersons/:id/delete – Toggle active status (deactivate/reactivate) ──────
 router.post('/:id/delete', (req, res) => {
   try {
-    db.prepare('DELETE FROM salespersons WHERE id = ?').run(req.params.id);
-    req.session.flash = { success: 'Salesperson deleted.' };
+    const sp = db.prepare('SELECT name, active FROM salespersons WHERE id = ?').get(req.params.id);
+    if (!sp) {
+      req.session.flash = { error: 'Salesperson not found.' };
+      return res.redirect('/salespersons');
+    }
+
+    // Toggle: deactivate if active, reactivate if inactive
+    const newStatus = sp.active ? 0 : 1;
+    const action = sp.active ? 'deactivated' : 'reactivated';
+    db.prepare('UPDATE salespersons SET active=?, updated_at=CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, req.params.id);
+
+    if (newStatus === 0) {
+      req.session.flash = { success: `Salesperson "${sp.name}" deactivated. (Data preserved for existing quotations)` };
+    } else {
+      req.session.flash = { success: `Salesperson "${sp.name}" reactivated.` };
+    }
   } catch(e) {
-    req.session.flash = { error: 'Error deleting salesperson: ' + e.message };
+    req.session.flash = { error: 'Error updating salesperson status: ' + e.message };
   }
   res.redirect('/salespersons');
 });
