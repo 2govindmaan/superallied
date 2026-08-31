@@ -309,19 +309,49 @@
 
 
 <!-- ═══ FOOTER: DECLARATION | SIGNATURE ═══ -->
-<table class="footer-outer" style="border-top: none; margin-top:0;">
+<!-- ═══ TERMS & CONDITIONS ═══ -->
+<div style="margin-top:10px; border:1px solid #ccc; border-radius:3px; padding:8px 10px; page-break-inside:avoid;">
+  <div style="font-size:8px; font-weight:700; letter-spacing:0.8px; color:#1a1a1a; border-bottom:1px solid #ddd; padding-bottom:4px; margin-bottom:5px; text-transform:uppercase;">Terms &amp; Conditions</div>
+  <table style="width:100%; border-collapse:collapse; font-size:7.5px; color:#333; line-height:1.5;">
+    <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px; padding-bottom:3px;"><b>1. Estimate Validity:</b> This estimate is valid for 7 days from the date of issue. Prices are subject to change thereafter.</td>
+      <td style="vertical-align:top; padding-bottom:3px;"><b>2. Taxes:</b> GST and other applicable government taxes/levies shall be charged as applicable on the date of invoicing.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px; padding-bottom:3px;"><b>3. Payment:</b> Payment shall be made as per agreed payment terms. Delay in payment may attract applicable interest/charges.</td>
+      <td style="vertical-align:top; padding-bottom:3px;"><b>4. Order Confirmation:</b> An order is confirmed only upon receipt of the required advance/payment and written acceptance by the Company.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px; padding-bottom:3px;"><b>5. Delivery:</b> Delivery is subject to availability and receipt of agreed payment. Timelines are indicative and may vary due to circumstances beyond the Company's control.</td>
+      <td style="vertical-align:top; padding-bottom:3px;"><b>6. Transportation:</b> Transportation, insurance, registration, road tax, permits and incidental charges shall be borne by the customer unless specifically included.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px; padding-bottom:3px;"><b>7. Warranty:</b> Warranty is governed strictly by manufacturer's terms. It does not cover wear and tear, misuse, negligence, accidents or unauthorized repairs.</td>
+      <td style="vertical-align:top; padding-bottom:3px;"><b>8. Specifications:</b> Product specifications, features and configurations are subject to change by the manufacturer without prior notice.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px; padding-bottom:3px;"><b>9. Cancellation &amp; Refund:</b> Cancellation is subject to Company's approval. Applicable cancellation, processing or restocking charges may be deducted.</td>
+      <td style="vertical-align:top; padding-bottom:3px;"><b>10. Documentation:</b> Registration, insurance, financing and statutory documentation shall be the customer's responsibility unless specifically agreed otherwise.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px; padding-bottom:3px;"><b>11. Invoice:</b> The invoice shall be treated as the final document for quantity, model, specifications, price, taxes and other commercial terms.</td>
+      <td style="vertical-align:top; padding-bottom:3px;"><b>12. Force Majeure:</b> The Company shall not be liable for any delay caused by natural calamities, strikes, government restrictions, shortage of materials or manufacturer-related delays.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top; padding-right:8px;"><b>13. Jurisdiction:</b> Any dispute shall be subject to the jurisdiction of competent courts at Meerut, Uttar Pradesh.</td>
+      <td style="vertical-align:top;"><b>14. Acceptance:</b> Placement of an order or acceptance of delivery shall constitute acceptance of these terms and conditions.</td>
+    </tr>
+  </table>
+</div>
+
+<table class="footer-outer" style="border-top: none; margin-top:8px;">
   <tr>
     <!-- Declaration -->
     <td style="width:60%">
       <div class="decl-head">Declaration</div>
       <div style="font-size:8.5px; line-height:1.65; color:#333;">
-        We declare that this quotation shows the actual price of the goods described and that all particulars are true and correct.<br><br>
-        <% if (q.terms) { %>
-          <b>Terms &amp; Conditions:</b><br>
-          <span style="white-space:pre-line"><%= q.terms %></span>
-        <% } else { %>
-          Prices are subject to change without prior notice. Goods once sold will not be taken back. GST as applicable.
-        <% } %>
+        We declare that this quotation shows the actual price of the goods described and that all particulars are true and correct.
       </div>
     </td>
 
