@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; background: #fff; }
+  .page { width: 190mm; }
+
+  /* ── Header ── */
+  .header { display: flex; justify-content: space-between; align-items: flex-start;
+            border-bottom: 2.5px solid #000; padding-bottom: 7px; margin-bottom: 10px; }
+  .company-name { font-size: 30px; font-weight: 900; color: #cc0000; letter-spacing: 1px; line-height: 1; }
+  .company-info  { font-size: 11px; line-height: 1.7; margin-top: 4px; }
+  .logo-area     { display: flex; align-items: flex-start; gap: 8px; }
+  .bull-logo-img { height: 58px; width: auto; object-fit: contain; }
+  .bull-logo-text{ font-size: 14px; font-weight: 900; color: #cc0000; border: 2.5px solid #cc0000;
+                   padding: 5px 10px; display: inline-block; letter-spacing: 2px; }
+  .bull-sub      { font-size: 8px; font-weight: bold; letter-spacing: 0.5px; text-align: center; margin-top: 2px; }
+
+  .dated { text-align: right; font-size: 11.5px; margin-bottom: 14px; }
+
+  /* ── Title block ── */
+  .form-title   { text-align: center; font-size: 20px; font-weight: 900; letter-spacing: 1px; margin-bottom: 4px; }
+  .rules-ref    { text-align: center; font-size: 11.5px; margin-bottom: 10px; }
+  .cert-title   { text-align: center; font-size: 13px; font-weight: 800; line-height: 1.5;
+                  margin: 0 auto 20px auto; max-width: 150mm; }
+
+  /* ── Certification paragraph ── */
+  .cert-para { font-size: 12.5px; line-height: 1.9; margin-bottom: 24px; text-align: justify; }
+  .cert-para b { font-weight: 700; }
+
+  /* ── Parameter table ── */
+  table.param { border-collapse: collapse; margin-bottom: 30px; }
+  table.param td, table.param th { border: none; padding: 3px 0; font-size: 12px; vertical-align: top; }
+  table.param td.lbl { width: 70mm; }
+  table.param td.val { padding-left: 10px; font-weight: 600; }
+
+  /* ── Signatory ── */
+  .signatory { text-align: right; margin-top: 10px; }
+  .signatory .for-co { font-size: 12px; margin-bottom: 40px; }
+  .signatory .role   { font-size: 11.5px; font-weight: bold; }
+
+  /* ── Footer ── */
+  .footer { margin-top: 40px; padding-top: 8px; border-top: 1px solid #ccc;
+            font-size: 9.5px; color: #333; text-align: center; }
+  .footer div { margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="company-name"><%= settings.company_name %></div>
+      <div class="company-info">
+        GSTIN : <%= settings.company_gstin %><br>
+        Auth. Dealer - <%= settings.dealer_of %><br>
+        <%= settings.company_address %>
+      </div>
+    </div>
+    <div class="logo-area">
+      <% if (bullLogoB64) { %>
+        <img src="<%= bullLogoB64 %>" class="bull-logo-img" alt="Bull">
+      <% } else { %>
+        <div><div class="bull-logo-text">&#9679; BULL</div><div class="bull-sub">CONSTRUCTION EQUIPMENT</div></div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="dated">Dated : <%= cert.displayDate %></div>
+
+  <!-- TITLE -->
+  <div class="form-title">FORM - 22</div>
+  <div class="rules-ref">(See Rules 47(g), 115A, 124, 126A, 127)</div>
+  <div class="cert-title">
+    INITIAL CERTIFICATE OF COMPLIANCE WITH POLLUTION STANDARDS,<br>
+    SAFETY STANDARDS OF COMPONENTS AND ROAD WORTHINESS
+  </div>
+
+  <!-- CERTIFICATION PARAGRAPH -->
+  <div class="cert-para">
+    Certified that <b><%= cert.model %></b> bearing
+    <% if (cert.chassis_number) { %>Chassis No., <b><%= cert.chassis_number %></b> <% } %>Serial No., <b><%= cert.serial_number %></b> and
+    Engine No., <b><%= cert.engine_number %></b> complies with the provisions of the Motor Vehicle
+    Act, 1988 and the Rules made there under. <b><%= cert.norms %> Certified.</b>
+  </div>
+
+  <!-- PARAMETER TABLE -->
+  <table class="param">
+    <tr><td class="lbl"><b>Parameter</b></td><td class="val"></td></tr>
+    <tr><td class="lbl">Carbon Monoxide</td><td class="val">5.00</td></tr>
+    <tr><td class="lbl">Zhydro</td><td class="val">NOT APPLICABLE</td></tr>
+    <tr><td class="lbl">Non-Methane HC</td><td class="val">NOT APPLICABLE</td></tr>
+    <tr><td class="lbl">Nox, if applicable</td><td class="val">NOT APPLICABLE</td></tr>
+    <tr><td class="lbl">HC + Nox, if applicable</td><td class="val">4.70</td></tr>
+    <tr><td class="lbl">PM</td><td class="val">0.40</td></tr>
+  </table>
+
+  <!-- SIGNATORY -->
+  <div class="signatory">
+    <div class="for-co">For <%= settings.company_name %></div>
+    <div class="role">(Authorized Signatory)</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div><%= settings.company_address %></div>
+    <div>
+      <% if (settings.company_phone_sales) { %>Sales : <%= settings.company_phone_sales %> &nbsp; <% } %>
+      <% if (settings.company_phone_service) { %>Service : <%= settings.company_phone_service %> &nbsp; <% } %>
+      <% if (settings.company_email) { %>Email : <%= settings.company_email %><% } %>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

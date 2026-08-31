@@ -1,5 +1,5 @@
 <%
-  const salesActive  = ['enquiries','visits','quotations','customers','machines','calculator','salespersons','route'].includes(active);
+  const salesActive  = ['enquiries','visits','quotations','customers','machines','calculator','salespersons','route','form22'].includes(active);
   const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports','stock'].includes(active);
   const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses'].includes(active);
   const isAdmin      = user && user.role === 'admin';
@@ -93,6 +93,9 @@
       <% if (isAdmin || hasPerm('quotations')) { %>
       <a href="/quotations" class="sb-link nav-link <%= active==='quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-file-earmark-text-fill"></i>Machine Quotations
+      </a>
+      <a href="/form-22" class="sb-link nav-link <%= active==='form22'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-patch-check-fill"></i>Form 22
       </a>
       <% } %>
       <% if (isAdmin || isMgr) { %>

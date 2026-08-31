@@ -27,6 +27,7 @@ const sparePartsRoutes      = require('./routes/spare-parts');
 const spareQuotationsRoutes = require('./routes/spare-quotations');
 const salespersonsRoutes    = require('./routes/salespersons');
 const stockRoutes           = require('./routes/stock');
+const form22Routes          = require('./routes/form22');
 
 // Pre-encode images once at startup
 const LOGO_PATH = path.join(__dirname, 'public', 'bull-logo.jpg');
@@ -42,6 +43,7 @@ const PORT = process.env.PORT || 3000;
 
 // Make UPLOADS_DIR accessible to route modules via app.locals
 app.locals.UPLOADS_DIR = UPLOADS_DIR;
+app.locals.bullLogoB64 = BULL_LOGO_B64;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
@@ -812,6 +814,7 @@ app.use('/spare-parts',       requireLogin, requirePerm('spare_parts'),       sp
 app.use('/spare-quotations',  requireLogin, requirePerm('spare_quotations'),  spareQuotationsRoutes);
 app.use('/salespersons',      requireLogin, requirePerm('salespersons_admin'), salespersonsRoutes);
 app.use('/stock',             requireLogin, requirePerm('stock'),             stockRoutes);
+app.use('/form-22',           requireLogin, requirePerm('quotations'),        form22Routes);
 
 // Route map placeholder
 app.get('/my-route', requireLogin, (req, res) => {
