@@ -354,8 +354,19 @@ db.exec(`
 
 // Seed default reimbursement rates (admin/manager-editable via /travel-expenses/rates)
 const insertRate = db.prepare('INSERT OR IGNORE INTO expense_rates (vehicle_type, rate_per_km) VALUES (?,?)');
-[['Own Two Wheeler', 3], ['Own Four Wheeler', 5], ['Company Vehicle', 0], ['Other', 4]]
+[['Own Two Wheeler', 3], ['Own Four Wheeler', 5], ['Company Vehicle', 0]]
   .forEach(r => insertRate.run(...r));
+
+// One-time correction for DBs (including production) seeded before this rate
+// policy existed — guarded so it never overwrites a rate an admin sets later
+// via /travel-expenses/rates. Also retires "Other" as a travel type.
+const ratesMigrationDone = db.prepare("SELECT value FROM settings WHERE key='rates_migration_2026_09'").get();
+if (!ratesMigrationDone) {
+  db.prepare("UPDATE expense_rates SET rate_per_km=3 WHERE vehicle_type='Own Two Wheeler'").run();
+  db.prepare("UPDATE expense_rates SET rate_per_km=5 WHERE vehicle_type='Own Four Wheeler'").run();
+  db.prepare("DELETE FROM expense_rates WHERE vehicle_type='Other'").run();
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('rates_migration_2026_09', '1')").run();
+}
 
 // Add is_active column to leave_types if missing
 try { db.exec("ALTER TABLE leave_types ADD COLUMN is_active INTEGER DEFAULT 1"); } catch(e) {}
