@@ -1,0 +1,311 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'travel-expenses', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-truck me-2 text-danger"></i><%= expense ? 'Edit' : 'New' %> Travel Expense</h4>
+    <a href="/travel-expenses/my" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error)   { %><div class="alert alert-danger  alert-dismissible"><%= flash.error   %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (expense) { %><p class="text-muted small font-monospace mb-3"><%= expense.expense_number %></p><% } %>
+
+  <form method="POST" action="/travel-expenses" id="expForm">
+    <% if (expense) { %><input type="hidden" name="id" value="<%= expense.id %>"><% } %>
+
+    <div class="row g-3">
+      <div class="col-lg-8">
+
+        <!-- Basic Information -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Basic Information</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Date</label>
+                <input type="date" name="date" class="form-control" value="<%= expense ? expense.date : todayStr %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Travel Type</label>
+                <select name="travel_type" id="travelType" class="form-select">
+                  <% rates.forEach(r => { %>
+                  <option value="<%= r.vehicle_type %>" data-rate="<%= r.rate_per_km %>"
+                    <%= (expense ? expense.travel_type : user.vehicle_type) === r.vehicle_type ? 'selected' : '' %>>
+                    <%= r.vehicle_type %> (₹<%= r.rate_per_km %>/km)
+                  </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Vehicle Number</label>
+                <input type="text" name="vehicle_number" class="form-control" placeholder="e.g. MH12AB1234"
+                  value="<%= expense ? expense.vehicle_number : (user.vehicle_number||'') %>">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Purpose of Travel</label>
+                <select name="purpose" class="form-select">
+                  <% ['Customer Visit','Site Visit','Sales Meeting','Service Support','Other'].forEach(p => { %>
+                  <option <%= (expense?.purpose)===p ? 'selected' : '' %>><%= p %></option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Odometer / Distance -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Odometer &amp; Distance</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Starting Odometer (km)</label>
+                <input type="number" step="0.1" name="start_odo" id="startOdo" class="form-control"
+                  value="<%= expense ? expense.start_odo : (journey?.start_km || '') %>">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Ending Odometer (km)</label>
+                <input type="number" step="0.1" name="end_odo" id="endOdo" class="form-control"
+                  value="<%= expense ? expense.end_odo : (journey?.end_km || '') %>">
+              </div>
+            </div>
+            <div class="alert alert-info py-2 mt-3 mb-0 small" id="distancePreview">Distance: — km · Travel Amount: —</div>
+          </div>
+        </div>
+
+        <!-- Fuel -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Fuel Expense (optional)</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Fuel Type</label>
+                <select name="fuel_type" class="form-select">
+                  <option value="">—</option>
+                  <% ['Petrol','Diesel','CNG','EV','Other'].forEach(f => { %>
+                  <option <%= (expense?.fuel_type)===f?'selected':'' %>><%= f %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Quantity</label>
+                <input type="number" step="0.01" name="fuel_qty" class="form-control" value="<%= expense?.fuel_qty || '' %>">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Amount (₹)</label>
+                <input type="number" step="0.01" name="fuel_amount" id="fuelAmount" class="form-control" value="<%= expense?.fuel_amount || '' %>">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Other expenses -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Toll / Parking / Other</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Toll (₹)</label>
+                <input type="number" step="0.01" name="toll_amount" id="tollAmount" class="form-control" value="<%= expense?.toll_amount || '' %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Parking (₹)</label>
+                <input type="number" step="0.01" name="parking_amount" id="parkingAmount" class="form-control" value="<%= expense?.parking_amount || '' %>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Other (₹)</label>
+                <input type="number" step="0.01" name="other_amount" id="otherAmount" class="form-control" value="<%= expense?.other_amount || '' %>">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Other — Description</label>
+                <input type="text" name="other_desc" class="form-control" value="<%= expense?.other_desc || '' %>">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% if (todaysVisits.length) { %>
+        <!-- Linked site visits -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Linked Site Visits</div>
+          <div class="card-body">
+            <% todaysVisits.forEach(v => { %>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="visit_ids" value="<%= v.id %>" id="v<%= v.id %>"
+                <%= linkedVisitIds.includes(v.id) ? 'checked' : '' %>>
+              <label class="form-check-label small" for="v<%= v.id %>">
+                VIS-<%= String(v.id).padStart(5,'0') %> — <%= v.customer_name %>
+                <span class="text-muted"><%= new Date(v.visit_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) %></span>
+              </label>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- Remarks -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Remarks</div>
+          <div class="card-body"><textarea name="remarks" class="form-control" rows="2"><%= expense?.remarks || '' %></textarea></div>
+        </div>
+
+      </div>
+
+      <div class="col-lg-4">
+        <!-- Computed total -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Claim Summary</div>
+          <div class="card-body" id="claimSummary">
+            <div class="d-flex justify-content-between small"><span>Travel</span><strong id="sumTravel">₹0</strong></div>
+            <div class="d-flex justify-content-between small"><span>Fuel</span><strong id="sumFuel">₹0</strong></div>
+            <div class="d-flex justify-content-between small"><span>Toll+Parking+Other</span><strong id="sumOther">₹0</strong></div>
+            <hr class="my-2">
+            <div class="d-flex justify-content-between"><span class="fw-bold">Total</span><strong class="text-danger fs-5" id="sumTotal">₹0</strong></div>
+            <small class="text-muted d-block mt-2">Final amount is always recalculated by the server before saving.</small>
+          </div>
+        </div>
+
+        <!-- Receipts -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Receipts / Photos</div>
+          <div class="card-body">
+            <% if (!expense) { %>
+              <small class="text-muted">Save this expense as a draft first, then come back here to attach receipt photos.</small>
+            <% } else { %>
+              <div id="docList" class="mb-2">
+                <% docs.forEach(d => { %>
+                <div class="d-flex align-items-center gap-2 mb-2 border rounded p-1" id="doc<%= d.id %>">
+                  <img src="<%= d.file_path %>" style="width:44px;height:44px;object-fit:cover;border-radius:6px">
+                  <div class="flex-grow-1 small text-capitalize"><%= d.doc_type.replace('_',' ') %></div>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDoc(<%= d.id %>)"><i class="bi bi-trash"></i></button>
+                </div>
+                <% }) %>
+              </div>
+              <select id="docType" class="form-select form-select-sm mb-2">
+                <option value="fuel_receipt">Fuel Receipt</option>
+                <option value="toll_receipt">Toll Receipt</option>
+                <option value="parking_receipt">Parking Receipt</option>
+                <option value="odometer">Odometer / Trip Meter</option>
+                <option value="other">Other</option>
+              </select>
+              <button type="button" class="btn btn-outline-danger btn-sm w-100 mb-1" onclick="openDocCamera()"><i class="bi bi-camera-fill me-1"></i>Take Photo</button>
+              <input type="file" id="docFile" accept="image/*" class="form-control form-control-sm" onchange="uploadDocFile(this)">
+              <div id="docOcrResult" class="small mt-2"></div>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-danger fw-bold"><i class="bi bi-save me-1"></i>Save Draft</button>
+          <% if (expense && ['draft','rejected'].includes(expense.status)) { %>
+          <button type="button" class="btn btn-success fw-bold" onclick="submitExpense()"><i class="bi bi-send-check me-1"></i>Submit for Approval</button>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Camera modal for receipts -->
+  <div class="modal fade" id="docCamModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-body text-center">
+        <video id="docVideo" autoplay playsinline style="width:100%;border-radius:10px;max-height:280px;background:#000"></video>
+        <div class="mt-3"><button type="button" class="btn btn-danger px-5 fw-bold" onclick="snapDoc()"><i class="bi bi-camera-fill me-1"></i>Snap</button></div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const EXPENSE_ID = <%= expense ? expense.id : 'null' %>;
+
+function updateSummary() {
+  const s = parseFloat(document.getElementById('startOdo').value) || 0;
+  const e = parseFloat(document.getElementById('endOdo').value) || 0;
+  const dist = Math.max(0, e - s);
+  const sel = document.getElementById('travelType');
+  const rate = parseFloat(sel.options[sel.selectedIndex]?.dataset.rate || 0);
+  const travel = Math.round(dist * rate * 100) / 100;
+  const fuel = parseFloat(document.getElementById('fuelAmount').value) || 0;
+  const other = (parseFloat(document.getElementById('tollAmount').value)||0) + (parseFloat(document.getElementById('parkingAmount').value)||0) + (parseFloat(document.getElementById('otherAmount').value)||0);
+  const total = travel + fuel + other;
+
+  document.getElementById('distancePreview').textContent = `Distance: ${dist.toFixed(1)} km · Travel Amount: ₹${travel.toFixed(0)} (₹${rate}/km)`;
+  document.getElementById('sumTravel').textContent = '₹' + travel.toFixed(0);
+  document.getElementById('sumFuel').textContent = '₹' + fuel.toFixed(0);
+  document.getElementById('sumOther').textContent = '₹' + other.toFixed(0);
+  document.getElementById('sumTotal').textContent = '₹' + total.toFixed(0);
+
+  if (e && s && e < s) document.getElementById('distancePreview').className = 'alert alert-danger py-2 mt-3 mb-0 small';
+  else document.getElementById('distancePreview').className = 'alert alert-info py-2 mt-3 mb-0 small';
+}
+['startOdo','endOdo','travelType','fuelAmount','tollAmount','parkingAmount','otherAmount'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateSummary);
+  document.getElementById(id).addEventListener('change', updateSummary);
+});
+updateSummary();
+
+document.getElementById('expForm').addEventListener('submit', (e) => {
+  const s = parseFloat(document.getElementById('startOdo').value) || 0;
+  const en = parseFloat(document.getElementById('endOdo').value) || 0;
+  if (en < s) { e.preventDefault(); alert('Ending odometer cannot be lower than starting odometer.'); }
+});
+
+function submitExpense() {
+  if (!confirm('Submit this expense for approval? You will not be able to edit it after submission.')) return;
+  fetch(`/travel-expenses/${EXPENSE_ID}/submit`, { method: 'POST' }).then(() => location.href = `/travel-expenses/${EXPENSE_ID}`);
+}
+
+function deleteDoc(id) {
+  if (!confirm('Remove this document?')) return;
+  fetch(`/travel-expenses/documents/${id}/delete`, { method: 'POST' })
+    .then(r => r.json()).then(r => { if (r.ok) document.getElementById('doc'+id).remove(); });
+}
+
+async function saveDoc(dataUrl) {
+  const docType = document.getElementById('docType').value;
+  const up = await fetch('/api/upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ data: dataUrl, folder: 'expenses' }) }).then(r=>r.json());
+  const resp = await fetch(`/travel-expenses/${EXPENSE_ID}/documents`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ doc_type: docType, file_path: up.path })
+  }).then(r=>r.json());
+  if (resp.ok) {
+    document.getElementById('docList').insertAdjacentHTML('beforeend', `
+      <div class="d-flex align-items-center gap-2 mb-2 border rounded p-1" id="doc${resp.docId}">
+        <img src="${up.path}" style="width:44px;height:44px;object-fit:cover;border-radius:6px">
+        <div class="flex-grow-1 small text-capitalize">${docType.replace('_',' ')}</div>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDoc(${resp.docId})"><i class="bi bi-trash"></i></button>
+      </div>`);
+    const ex = resp.extracted || {};
+    document.getElementById('docOcrResult').innerHTML = ex.confidence > 0
+      ? `<div class="alert alert-warning py-1 px-2 small mb-0">Detected — please review and edit the fields above.</div>`
+      : `<div class="alert alert-secondary py-1 px-2 small mb-0">${ex.note || 'No automatic extraction available — enter values manually.'}</div>`;
+  }
+}
+
+let _docStream = null;
+async function openDocCamera() {
+  const modal = new bootstrap.Modal(document.getElementById('docCamModal'));
+  modal.show();
+  try {
+    _docStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    document.getElementById('docVideo').srcObject = _docStream;
+  } catch(e) { alert('Camera not available: ' + e.message); modal.hide(); }
+}
+async function snapDoc() {
+  const video = document.getElementById('docVideo');
+  const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 480;
+  canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  if (_docStream) { _docStream.getTracks().forEach(t=>t.stop()); _docStream = null; }
+  bootstrap.Modal.getInstance(document.getElementById('docCamModal')).hide();
+  await saveDoc(dataUrl);
+}
+function uploadDocFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => saveDoc(reader.result);
+  reader.readAsDataURL(file);
+}
+</script>
+</body></html>

@@ -14,8 +14,17 @@
           <option value="">All Departments</option>
           <% departments.forEach(d => { %><option value="<%= d %>" <%=dept===d?'selected':''%>><%= d %></option><% }) %>
         </select>
+        <select name="role" class="form-select" style="max-width:150px">
+          <option value="">All Roles</option>
+          <% allRoles.forEach(r => { %><option value="<%= r %>" <%=role===r?'selected':''%>><%= r %></option><% }) %>
+        </select>
+        <select name="status" class="form-select" style="max-width:140px">
+          <option value="">All Statuses</option>
+          <option value="active"   <%=status==='active'?'selected':''%>>Active</option>
+          <option value="inactive" <%=status==='inactive'?'selected':''%>>Inactive</option>
+        </select>
         <button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button>
-        <% if (q || dept) { %><a href="/hr/employees" class="btn btn-outline-danger">Clear</a><% } %>
+        <% if (q || dept || role || status) { %><a href="/hr/employees" class="btn btn-outline-danger">Clear</a><% } %>
       </form>
     </div>
   </div>
@@ -24,11 +33,11 @@
     <div class="table-responsive">
       <table class="table table-hover mb-0">
         <thead class="table-light">
-          <tr><th>Employee</th><th>Code</th><th>Department</th><th>Role</th><th>Mobile</th><th>Joined</th><th></th></tr>
+          <tr><th>Employee</th><th>Code</th><th>Department</th><th>Role</th><th>Mobile</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           <% employees.forEach(e => { %>
-          <tr>
+          <tr class="<%= e.is_hr_active===0 ? 'opacity-50' : '' %>">
             <td>
               <div class="d-flex align-items-center gap-2">
                 <% if (e.photo_path) { %>
@@ -48,10 +57,19 @@
             <td class="small"><%= e.department || '—' %></td>
             <td><span class="badge <%= e.role==='admin'?'bg-danger':e.role==='manager'?'bg-warning text-dark':'bg-primary' %>"><%= e.role %></span></td>
             <td class="small"><%= e.mobile || '—' %></td>
-            <td class="small text-muted"><%= e.date_of_joining || '—' %></td>
-            <td class="text-end">
-              <a href="/hr/employees/<%= e.id %>" class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-eye"></i></a>
-              <a href="/hr/employees/<%= e.id %>/id-card" class="btn btn-sm btn-outline-danger"><i class="bi bi-credit-card-2-front"></i></a>
+            <td><span class="badge <%= e.is_hr_active===0?'bg-secondary':'bg-success' %>"><%= e.is_hr_active===0?'Inactive':'Active' %></span></td>
+            <td class="text-end text-nowrap">
+              <a href="/hr/employees/<%= e.id %>" class="btn btn-sm btn-outline-secondary me-1" title="View"><i class="bi bi-eye"></i></a>
+              <a href="/hr/employees/<%= e.id %>/edit" class="btn btn-sm btn-outline-secondary me-1" title="Edit"><i class="bi bi-pencil"></i></a>
+              <% if (e.is_hr_active === 0) { %>
+              <form method="POST" action="/hr/employees/<%= e.id %>/activate" class="d-inline" data-confirm-activate="<%= e.full_name || e.username %>">
+                <button class="btn btn-sm btn-outline-success" title="Activate"><i class="bi bi-check-circle"></i></button>
+              </form>
+              <% } else { %>
+              <form method="POST" action="/hr/employees/<%= e.id %>/deactivate" class="d-inline" data-confirm-deactivate="<%= e.full_name || e.username %>">
+                <button class="btn btn-sm btn-outline-warning" title="Deactivate"><i class="bi bi-slash-circle"></i></button>
+              </form>
+              <% } %>
             </td>
           </tr>
           <% }) %>
@@ -62,4 +80,12 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.querySelectorAll('[data-confirm-activate]').forEach(f => {
+  f.addEventListener('submit', e => { if (!confirm('Activate ' + f.dataset.confirmActivate + '?')) e.preventDefault(); });
+});
+document.querySelectorAll('[data-confirm-deactivate]').forEach(f => {
+  f.addEventListener('submit', e => { if (!confirm('Deactivate ' + f.dataset.confirmDeactivate + '? They will not be able to log in. Their records are preserved.')) e.preventDefault(); });
+});
+</script>
 </body></html>

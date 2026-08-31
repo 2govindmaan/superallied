@@ -2,10 +2,22 @@
 <%- include('../partials/sidebar', { active: 'hr', user }) %>
 <div class="main-content">
   <div class="page-header d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0 fw-bold"><%= emp.full_name %></h4>
+    <h4 class="mb-0 fw-bold d-flex align-items-center gap-2">
+      <%= emp.full_name %>
+      <% if (emp.is_hr_active === 0) { %><span class="badge bg-secondary">Inactive</span><% } else { %><span class="badge bg-success">Active</span><% } %>
+    </h4>
     <div class="d-flex gap-2">
       <a href="/hr/employees/<%= emp.id %>/id-card" class="btn btn-outline-danger"><i class="bi bi-credit-card-2-front me-1"></i>ID Card</a>
       <a href="/hr/employees/<%= emp.id %>/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+      <% if (emp.is_hr_active === 0) { %>
+      <form method="POST" action="/hr/employees/<%= emp.id %>/activate" class="d-inline">
+        <button class="btn btn-outline-success" onclick="return confirm('Activate <%= emp.full_name %>? They will be able to log in again.')"><i class="bi bi-check-circle me-1"></i>Activate</button>
+      </form>
+      <% } else { %>
+      <form method="POST" action="/hr/employees/<%= emp.id %>/deactivate" class="d-inline">
+        <button class="btn btn-outline-warning" onclick="return confirm('Deactivate <%= emp.full_name %>? They will no longer be able to log in. Their records are preserved.')"><i class="bi bi-slash-circle me-1"></i>Deactivate</button>
+      </form>
+      <% } %>
       <a href="/hr/employees" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
     </div>
   </div>

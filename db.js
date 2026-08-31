@@ -151,6 +151,8 @@ const userCols = [
   "ALTER TABLE users ADD COLUMN photo_path TEXT DEFAULT ''",
   "ALTER TABLE users ADD COLUMN manager_id INTEGER",
   "ALTER TABLE users ADD COLUMN is_hr_active INTEGER DEFAULT 1",
+  "ALTER TABLE users ADD COLUMN vehicle_type TEXT DEFAULT ''",
+  "ALTER TABLE users ADD COLUMN vehicle_number TEXT DEFAULT ''",
 ];
 userCols.forEach(sql => { try { db.exec(sql); } catch(e) {} });
 
@@ -261,6 +263,7 @@ db.exec(`
     remarks TEXT DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_visits_user ON field_visits(user_id);
+  CREATE INDEX IF NOT EXISTS idx_visits_time ON field_visits(visit_time);
 
   CREATE TABLE IF NOT EXISTS expense_journeys (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,6 +285,74 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_journey_user ON expense_journeys(user_id, date);
 `);
+
+try { db.exec("ALTER TABLE field_visits ADD COLUMN contact_person TEXT DEFAULT ''"); } catch(e) {}
+try { db.exec("ALTER TABLE field_visits ADD COLUMN purpose TEXT DEFAULT ''"); } catch(e) {}
+
+// ── Motor Vehicle Travel Expense Tables ───────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS expense_rates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_type TEXT UNIQUE NOT NULL,
+    rate_per_km  REAL NOT NULL DEFAULT 0,
+    updated_by   INTEGER REFERENCES users(id),
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS travel_expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_number TEXT UNIQUE NOT NULL,
+    user_id      INTEGER NOT NULL REFERENCES users(id),
+    date         DATE NOT NULL,
+    travel_type  TEXT NOT NULL DEFAULT 'Own Two Wheeler',
+    vehicle_number TEXT DEFAULT '',
+    purpose      TEXT DEFAULT '',
+    start_odo    REAL,
+    end_odo      REAL,
+    distance_km  REAL DEFAULT 0,
+    rate_per_km  REAL DEFAULT 0,
+    travel_amount REAL DEFAULT 0,
+    fuel_type    TEXT DEFAULT '',
+    fuel_qty     REAL DEFAULT 0,
+    fuel_amount  REAL DEFAULT 0,
+    toll_amount    REAL DEFAULT 0,
+    parking_amount REAL DEFAULT 0,
+    other_amount   REAL DEFAULT 0,
+    other_desc     TEXT DEFAULT '',
+    total_claim  REAL DEFAULT 0,
+    gps_distance_km REAL,
+    status       TEXT DEFAULT 'draft',
+    remarks      TEXT DEFAULT '',
+    submitted_at DATETIME,
+    approved_by  INTEGER REFERENCES users(id),
+    approved_at  DATETIME,
+    approval_remarks TEXT DEFAULT '',
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_travelexp_user ON travel_expenses(user_id, status);
+
+  CREATE TABLE IF NOT EXISTS expense_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_id INTEGER NOT NULL REFERENCES travel_expenses(id) ON DELETE CASCADE,
+    doc_type   TEXT NOT NULL DEFAULT 'other',
+    file_path  TEXT NOT NULL,
+    ocr_json   TEXT DEFAULT '',
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_expdocs_expense ON expense_documents(expense_id);
+
+  CREATE TABLE IF NOT EXISTS expense_visit_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expense_id INTEGER NOT NULL REFERENCES travel_expenses(id) ON DELETE CASCADE,
+    visit_id   INTEGER NOT NULL REFERENCES field_visits(id),
+    UNIQUE(expense_id, visit_id)
+  );
+`);
+
+// Seed default reimbursement rates (admin/manager-editable via /travel-expenses/rates)
+const insertRate = db.prepare('INSERT OR IGNORE INTO expense_rates (vehicle_type, rate_per_km) VALUES (?,?)');
+[['Own Two Wheeler', 4], ['Own Four Wheeler', 8], ['Company Vehicle', 0], ['Other', 4]]
+  .forEach(r => insertRate.run(...r));
 
 // Add is_active column to leave_types if missing
 try { db.exec("ALTER TABLE leave_types ADD COLUMN is_active INTEGER DEFAULT 1"); } catch(e) {}
@@ -405,9 +476,14 @@ const defaultPerms = [
 
   // hr
   ['hr','attendance'],['hr','hr_admin'],['hr','leave_approval'],['hr','attendance_admin'],['hr','reports'],
+  ['hr','expense_approval'],
+
+  // manager — travel expense approvals
+  ['manager','expense_approval'],
 
   // staff (legacy alias for sales)
   ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],['staff','enquiries'],
+  ['staff','expense_claim'],
 
   // employee (attendance only)
   ['employee','attendance'],
@@ -1143,6 +1219,12 @@ function nextSpareQuotationNumber() {
   return { quotationNo: `SP-${fy}/${padded}`, financialYear: fy, serialNumber: serial };
 }
 
+function nextExpenseNumber() {
+  const year = new Date().getFullYear();
+  const count = db.prepare("SELECT COUNT(*) as c FROM travel_expenses WHERE expense_number LIKE ?").get(`EXP-${year}-%`).c;
+  return `EXP-${year}-${String(count + 1).padStart(6, '0')}`;
+}
+
 function auditLog(userId, action, entity = '', entityId = '', details = '') {
   try {
     db.prepare('INSERT INTO audit_log (user_id,action,entity,entity_id,details) VALUES (?,?,?,?,?)')
@@ -1150,4 +1232,4 @@ function auditLog(userId, action, entity = '', entityId = '', details = '') {
   } catch(e) {}
 }
 
-module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog, nextEnquiryNumber, nextEnquiryQuotationNumber, getEnquiryTimeline, checkFollowupNotifications };
+module.exports = { db, getSettings, getFY, nextQuotationNumber, nextSpareQuotationNumber, numberToWords, calcQuotation, formatINR, createNotification, getUserPermissions, auditLog, nextEnquiryNumber, nextEnquiryQuotationNumber, getEnquiryTimeline, checkFollowupNotifications, nextExpenseNumber };

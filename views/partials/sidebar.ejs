@@ -1,7 +1,7 @@
 <%
   const salesActive  = ['enquiries','visits','quotations','customers','machines','calculator','salespersons','route','form22'].includes(active);
   const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports','stock'].includes(active);
-  const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses'].includes(active);
+  const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses','travel-expenses'].includes(active);
   const isAdmin      = user && user.role === 'admin';
   const isMgr        = user && (user.role === 'admin' || user.role === 'manager');
 %>
@@ -176,6 +176,24 @@
       <a href="/expenses" class="sb-link nav-link <%= active==='expenses'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-receipt"></i>Expenses
       </a>
+      <% if (hasPerm('expense_claim') || isAdmin) { %>
+      <a href="/travel-expenses/new" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-truck"></i>New Travel Expense
+      </a>
+      <a href="/travel-expenses/my" class="sb-link nav-link <%= active==='travel-expenses'?'active':'' %>" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-receipt-cutoff"></i>My Travel Expenses
+      </a>
+      <% } %>
+      <% if (hasPerm('expense_approval') || isAdmin) { %>
+      <a href="/travel-expenses/queue" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-check2-square"></i>Expense Approvals
+      </a>
+      <% } %>
+      <% if (isAdmin || isMgr) { %>
+      <a href="/travel-expenses/admin/rates" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
+        <i class="bi bi-sliders"></i>Expense Rate Config
+      </a>
+      <% } %>
       <a href="/id-card" class="sb-link nav-link <%= active==='id-card'?'active':'' %>" onclick="closeSidebarOnMobile()">
         <i class="bi bi-credit-card-2-front-fill"></i>ID Card
       </a>

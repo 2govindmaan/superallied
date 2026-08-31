@@ -4,7 +4,7 @@ const fs      = require('fs');
 const router  = express.Router();
 const QRCode  = require('qrcode');
 const bcrypt  = require('bcryptjs');
-const { db, getSettings, formatINR, numberToWords, createNotification } = require('../db');
+const { db, getSettings, formatINR, numberToWords, createNotification, auditLog } = require('../db');
 const { generatePDF } = require('../pdf');
 
 // ── HR Dashboard ──────────────────────────────────────────────────────────────
@@ -33,31 +33,38 @@ router.get('/dashboard', (req, res) => {
 });
 
 // ── Employee List ─────────────────────────────────────────────────────────────
+const ALL_ROLES = ['admin','manager','hr','sales','office','service','staff','employee'];
+
 router.get('/employees', (req, res) => {
-  const { q, dept } = req.query;
-  let sql = "SELECT * FROM users WHERE is_hr_active=1";
+  const { q, dept, role, status } = req.query;
+  let sql = "SELECT * FROM users WHERE 1=1";
   const params = [];
-  if (q)    { sql += " AND (full_name LIKE ? OR employee_code LIKE ? OR mobile LIKE ?)"; params.push(`%${q}%`,`%${q}%`,`%${q}%`); }
-  if (dept) { sql += " AND department=?"; params.push(dept); }
-  sql += " ORDER BY full_name";
+  if (q)      { sql += " AND (full_name LIKE ? OR employee_code LIKE ? OR mobile LIKE ?)"; params.push(`%${q}%`,`%${q}%`,`%${q}%`); }
+  if (dept)   { sql += " AND department=?"; params.push(dept); }
+  if (role)   { sql += " AND role=?"; params.push(role); }
+  if (status === 'active')   sql += " AND is_hr_active=1";
+  if (status === 'inactive') sql += " AND is_hr_active=0";
+  sql += " ORDER BY is_hr_active DESC, full_name";
 
   const employees = db.prepare(sql).all(...params);
-  const departments = db.prepare("SELECT DISTINCT department FROM users WHERE department != '' AND is_hr_active=1").all().map(r => r.department);
+  const departments = db.prepare("SELECT DISTINCT department FROM users WHERE department != ''").all().map(r => r.department);
   const managers  = db.prepare("SELECT id, full_name FROM users WHERE role IN ('admin','manager') ORDER BY full_name").all();
 
-  res.render('hr/employees', { title: 'Employees', employees, departments, managers, q: q||'', dept: dept||'' });
+  res.render('hr/employees', { title: 'Employees', employees, departments, managers, allRoles: ALL_ROLES,
+    q: q||'', dept: dept||'', role: role||'', status: status||'' });
 });
 
 // ── New employee form ─────────────────────────────────────────────────────────
 router.get('/employees/new', (req, res) => {
   const managers = db.prepare("SELECT id, full_name FROM users WHERE role IN ('admin','manager') ORDER BY full_name").all();
-  res.render('hr/employee-form', { title: 'Add Employee', emp: null, managers });
+  res.render('hr/employee-form', { title: 'Add Employee', emp: null, managers, allRoles: ALL_ROLES });
 });
 
 // ── Create employee ───────────────────────────────────────────────────────────
 router.post('/employees', (req, res) => {
   const { username, password, full_name, role, employee_code, designation,
-          department, mobile, emergency_contact, date_of_joining, manager_id } = req.body;
+          department, mobile, emergency_contact, date_of_joining, manager_id,
+          vehicle_type, vehicle_number } = req.body;
 
   if (!username?.trim() || !password) {
     req.session.flash = { error: 'Username and password are required.' };
@@ -67,17 +74,19 @@ router.post('/employees', (req, res) => {
     req.session.flash = { error: `Username "${username.trim()}" is already taken.` };
     return res.redirect('/hr/employees/new');
   }
+  const safeRole = ALL_ROLES.includes(role) ? role : 'sales';
 
   const hash = bcrypt.hashSync(password, 10);
   const result = db.prepare(`INSERT INTO users
     (username,password_hash,full_name,role,employee_code,designation,department,
-     mobile,emergency_contact,date_of_joining,manager_id)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(username.trim(), hash, full_name||'', role||'employee',
+     mobile,emergency_contact,date_of_joining,manager_id,vehicle_type,vehicle_number)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(username.trim(), hash, full_name||'', safeRole,
       employee_code||'', designation||'', department||'',
       mobile||'', emergency_contact||'', date_of_joining||null,
-      manager_id ? +manager_id : null);
+      manager_id ? +manager_id : null, vehicle_type||'', vehicle_number||'');
 
+  auditLog(req.session.userId, 'user_created', 'user', result.lastInsertRowid, `Created "${full_name}" (${safeRole})`);
   req.session.flash = { success: `Employee "${full_name}" created.` };
   res.redirect('/hr/employees/' + result.lastInsertRowid);
 });
@@ -106,25 +115,52 @@ router.get('/employees/:id/edit', (req, res) => {
   const emp = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
   if (!emp) return res.redirect('/hr/employees');
   const managers = db.prepare("SELECT id, full_name FROM users WHERE role IN ('admin','manager') ORDER BY full_name").all();
-  res.render('hr/employee-form', { title: 'Edit Employee', emp, managers });
+  res.render('hr/employee-form', { title: 'Edit Employee', emp, managers, allRoles: ALL_ROLES });
 });
 
 router.post('/employees/:id', (req, res) => {
   const { full_name, role, employee_code, designation, department,
-          mobile, emergency_contact, date_of_joining, manager_id, is_hr_active, photo_path } = req.body;
+          mobile, emergency_contact, date_of_joining, manager_id, is_hr_active, photo_path,
+          vehicle_type, vehicle_number } = req.body;
+  const safeRole = ALL_ROLES.includes(role) ? role : 'sales';
 
   db.prepare(`UPDATE users SET full_name=?,role=?,employee_code=?,designation=?,department=?,
-    mobile=?,emergency_contact=?,date_of_joining=?,manager_id=?,is_hr_active=?,photo_path=?
+    mobile=?,emergency_contact=?,date_of_joining=?,manager_id=?,is_hr_active=?,photo_path=?,
+    vehicle_type=?,vehicle_number=?
     WHERE id=?`)
-    .run(full_name||'', role||'employee', employee_code||'', designation||'', department||'',
+    .run(full_name||'', safeRole, employee_code||'', designation||'', department||'',
       mobile||'', emergency_contact||'', date_of_joining||null,
       manager_id ? +manager_id : null,
       is_hr_active === '0' ? 0 : 1,
-      photo_path||'',
+      photo_path||'', vehicle_type||'', vehicle_number||'',
       req.params.id);
 
+  auditLog(req.session.userId, 'user_updated', 'user', req.params.id, `Updated "${full_name}"`);
   req.session.flash = { success: 'Employee updated.' };
   res.redirect('/hr/employees/' + req.params.id);
+});
+
+// ── Activate / Deactivate employee ────────────────────────────────────────────
+router.post('/employees/:id/activate', (req, res) => {
+  const emp = db.prepare('SELECT id, full_name FROM users WHERE id=?').get(req.params.id);
+  if (!emp) return res.redirect('/hr/employees');
+  db.prepare('UPDATE users SET is_hr_active=1 WHERE id=?').run(emp.id);
+  auditLog(req.session.userId, 'user_activated', 'user', emp.id, `Activated "${emp.full_name}"`);
+  req.session.flash = { success: `${emp.full_name} activated. They can now log in.` };
+  res.redirect('back');
+});
+
+router.post('/employees/:id/deactivate', (req, res) => {
+  const emp = db.prepare('SELECT id, full_name FROM users WHERE id=?').get(req.params.id);
+  if (!emp) return res.redirect('/hr/employees');
+  if (+req.params.id === req.session.userId) {
+    req.session.flash = { error: 'You cannot deactivate your own account.' };
+    return res.redirect('back');
+  }
+  db.prepare('UPDATE users SET is_hr_active=0 WHERE id=?').run(emp.id);
+  auditLog(req.session.userId, 'user_deactivated', 'user', emp.id, `Deactivated "${emp.full_name}"`);
+  req.session.flash = { success: `${emp.full_name} deactivated. Their records are preserved; they can no longer log in.` };
+  res.redirect('back');
 });
 
 // ── Employee photo upload ─────────────────────────────────────────────────────

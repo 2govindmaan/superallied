@@ -9,19 +9,22 @@
   <div class="card border-0 shadow-sm">
     <div class="table-responsive">
       <table class="table table-hover mb-0">
-        <thead class="table-light"><tr><th>Date & Time</th><th>Customer</th><th>Location</th><th>Remarks</th></tr></thead>
+        <thead class="table-light"><tr><th>Visit ID</th><th>Date & Time</th><th>Customer / Site</th><th>Contact</th><th>Purpose</th><th>Location</th><th>Remarks</th></tr></thead>
         <tbody>
           <% visits.forEach(v => { %>
           <tr>
+            <td class="font-monospace small text-muted">VIS-<%= String(v.id).padStart(5,'0') %></td>
             <td class="small"><%= new Date(v.visit_time).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) %></td>
             <td class="fw-semibold"><%= v.customer_name %></td>
+            <td class="small"><%= v.contact_person || '—' %></td>
+            <td class="small"><%= v.purpose || '—' %></td>
             <td class="small">
               <% if (v.lat) { %><a href="https://maps.google.com/?q=<%= v.lat %>,<%= v.lng %>" target="_blank" class="text-decoration-none"><i class="bi bi-geo-alt-fill text-danger"></i> Map</a><% } else { %>—<% } %>
             </td>
             <td class="small text-muted"><%= v.remarks || '—' %></td>
           </tr>
           <% }) %>
-          <% if (!visits.length) { %><tr><td colspan="4" class="text-center text-muted py-4">No field visits yet.</td></tr><% } %>
+          <% if (!visits.length) { %><tr><td colspan="7" class="text-center text-muted py-4">No field visits yet.</td></tr><% } %>
         </tbody>
       </table>
     </div>

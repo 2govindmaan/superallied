@@ -1,0 +1,120 @@
+<%- include('../partials/head', { title }) %>
+<%- include('../partials/sidebar', { active: 'travel-expenses', user }) %>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4 class="mb-0 fw-bold"><i class="bi bi-truck me-2 text-danger"></i><%= expense.expense_number %></h4>
+      <small class="text-muted"><%= owner.full_name %> <% if (owner.employee_code) { %>(<%= owner.employee_code %>)<% } %></small>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <% const badge = { draft:'bg-secondary', submitted:'bg-warning text-dark', approved:'bg-success', rejected:'bg-danger' }; %>
+      <span class="badge <%= badge[expense.status] %> fs-6"><%= expense.status.toUpperCase() %></span>
+      <% if (isOwner && ['draft','rejected'].includes(expense.status)) { %>
+      <a href="/travel-expenses/<%= expense.id %>/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+      <% } %>
+      <a href="/travel-expenses/my" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+  </div>
+
+  <% if (flash.success) { %><div class="alert alert-success alert-dismissible"><%= flash.success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+  <% if (flash.error)   { %><div class="alert alert-danger  alert-dismissible"><%= flash.error   %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div><% } %>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Trip Details</div>
+        <div class="card-body">
+          <div class="row g-2 small">
+            <div class="col-6"><span class="text-muted">Date:</span> <strong><%= expense.date %></strong></div>
+            <div class="col-6"><span class="text-muted">Travel Type:</span> <strong><%= expense.travel_type %></strong></div>
+            <div class="col-6"><span class="text-muted">Vehicle Number:</span> <strong><%= expense.vehicle_number || '—' %></strong></div>
+            <div class="col-6"><span class="text-muted">Purpose:</span> <strong><%= expense.purpose || '—' %></strong></div>
+            <div class="col-6"><span class="text-muted">Starting Odometer:</span> <strong><%= expense.start_odo %> km</strong></div>
+            <div class="col-6"><span class="text-muted">Ending Odometer:</span> <strong><%= expense.end_odo %> km</strong></div>
+            <div class="col-6"><span class="text-muted">Distance:</span> <strong><%= expense.distance_km.toFixed(1) %> km</strong></div>
+            <div class="col-6"><span class="text-muted">Rate:</span> <strong>₹<%= expense.rate_per_km %>/km</strong></div>
+          </div>
+          <% if (expense.remarks) { %><hr><div class="small"><span class="text-muted">Remarks:</span> <%= expense.remarks %></div><% } %>
+        </div>
+      </div>
+
+      <% if (visits.length) { %>
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Linked Site Visits</div>
+        <div class="card-body">
+          <% visits.forEach(v => { %>
+          <div class="small mb-1">VIS-<%= String(v.id).padStart(5,'0') %> — <strong><%= v.customer_name %></strong> <span class="text-muted"><%= new Date(v.visit_time).toLocaleString('en-IN') %></span></div>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Receipts / Documents</div>
+        <div class="card-body">
+          <% if (!docs.length) { %><small class="text-muted">No documents attached.</small><% } %>
+          <div class="d-flex flex-wrap gap-3">
+            <% docs.forEach(d => { %>
+            <div class="text-center" style="width:110px">
+              <a href="<%= d.file_path %>" target="_blank"><img src="<%= d.file_path %>" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #ddd"></a>
+              <div class="small text-capitalize mt-1"><%= d.doc_type.replace('_',' ') %></div>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+
+      <% if (expense.status === 'rejected' && expense.approval_remarks) { %>
+      <div class="alert alert-danger"><strong>Rejection reason:</strong> <%= expense.approval_remarks %></div>
+      <% } %>
+      <% if (expense.status === 'approved') { %>
+      <div class="alert alert-success">
+        <strong>Approved</strong> by <%= approver?.full_name || '—' %> on <%= new Date(expense.approved_at).toLocaleString('en-IN') %>
+        <% if (expense.approval_remarks) { %><br><%= expense.approval_remarks %><% } %>
+      </div>
+      <% } %>
+
+      <% if (isApprover && expense.status === 'submitted') { %>
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">Approval Decision</div>
+        <div class="card-body">
+          <textarea id="approvalComment" class="form-control mb-2" rows="2" placeholder="Comments (optional for approve, recommended for reject)"></textarea>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success flex-grow-1" onclick="decide('approve')"><i class="bi bi-check-lg me-1"></i>Approve</button>
+            <button class="btn btn-danger flex-grow-1" onclick="decide('reject')"><i class="bi bi-x-lg me-1"></i>Reject</button>
+          </div>
+        </div>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">Claim Breakdown</div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between small"><span>Travel (<%= expense.distance_km.toFixed(1) %> km × ₹<%= expense.rate_per_km %>)</span><strong>₹<%= expense.travel_amount.toFixed(0) %></strong></div>
+          <div class="d-flex justify-content-between small mt-1"><span>Fuel<% if(expense.fuel_type){ %> (<%= expense.fuel_type %>)<% } %></span><strong>₹<%= expense.fuel_amount.toFixed(0) %></strong></div>
+          <div class="d-flex justify-content-between small mt-1"><span>Toll</span><strong>₹<%= expense.toll_amount.toFixed(0) %></strong></div>
+          <div class="d-flex justify-content-between small mt-1"><span>Parking</span><strong>₹<%= expense.parking_amount.toFixed(0) %></strong></div>
+          <div class="d-flex justify-content-between small mt-1"><span>Other<% if(expense.other_desc){ %> (<%= expense.other_desc %>)<% } %></span><strong>₹<%= expense.other_amount.toFixed(0) %></strong></div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between"><span class="fw-bold">Total Claim</span><strong class="text-danger fs-5">₹<%= expense.total_claim.toFixed(0) %></strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<% if (isApprover && expense.status === 'submitted') { %>
+<script>
+function decide(action) {
+  const comment = document.getElementById('approvalComment').value;
+  if (action === 'reject' && !comment.trim()) { if (!confirm('Reject without a comment?')) return; }
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = `/travel-expenses/<%= expense.id %>/${action}`;
+  const input = document.createElement('input'); input.type = 'hidden'; input.name = 'comment'; input.value = comment;
+  form.appendChild(input); document.body.appendChild(form); form.submit();
+}
+</script>
+<% } %>
+</body></html>

@@ -77,10 +77,9 @@
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Role</label>
                 <select name="role" class="form-select">
-                  <option value="employee" <%=(!emp||emp.role==='employee')?'selected':''%>>Employee</option>
-                  <option value="staff"    <%=(emp?.role==='staff')?'selected':''%>>Staff (Sales)</option>
-                  <option value="manager"  <%=(emp?.role==='manager')?'selected':''%>>Manager</option>
-                  <option value="admin"    <%=(emp?.role==='admin')?'selected':''%>>Admin</option>
+                  <% allRoles.forEach(r => { %>
+                  <option value="<%= r %>" <%=(emp?emp.role===r:r==='sales')?'selected':''%>><%= r.charAt(0).toUpperCase()+r.slice(1) %></option>
+                  <% }) %>
                 </select>
               </div>
               <div class="col-md-4">
@@ -101,6 +100,29 @@
                 </select>
               </div>
               <% } %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vehicle Details (used to pre-fill Travel Expense claims) -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white fw-semibold">Vehicle Details</div>
+          <div class="card-body">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Vehicle Type</label>
+                <select name="vehicle_type" class="form-select">
+                  <option value="" <%=!emp?.vehicle_type?'selected':''%>>— Not set —</option>
+                  <option value="Own Two Wheeler"  <%=emp?.vehicle_type==='Own Two Wheeler'?'selected':''%>>Own Two Wheeler</option>
+                  <option value="Own Four Wheeler" <%=emp?.vehicle_type==='Own Four Wheeler'?'selected':''%>>Own Four Wheeler</option>
+                  <option value="Company Vehicle"  <%=emp?.vehicle_type==='Company Vehicle'?'selected':''%>>Company Vehicle</option>
+                  <option value="Other"            <%=emp?.vehicle_type==='Other'?'selected':''%>>Other</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Vehicle Number</label>
+                <input type="text" name="vehicle_number" class="form-control" value="<%= emp?.vehicle_number || '' %>" placeholder="e.g. MH12AB1234">
+              </div>
             </div>
           </div>
         </div>

@@ -20,6 +20,7 @@ const hrRoutes         = require('./routes/hr');
 const notifyRoutes     = require('./routes/notify');
 const visitsRoutes     = require('./routes/visits');
 const expensesRoutes   = require('./routes/expenses');
+const travelExpensesRoutes = require('./routes/travel-expenses');
 const machinesRoutes        = require('./routes/machines');
 const enquiriesRoutes       = require('./routes/enquiries');
 const soldMachinesRoutes    = require('./routes/sold-machines');
@@ -121,6 +122,10 @@ app.post('/login', (req, res) => {
     req.session.flash = { error: 'Invalid username or password.' };
     return res.redirect('/login');
   }
+  if (user.is_hr_active === 0) {
+    req.session.flash = { error: 'Your account has been deactivated. Contact HR/Admin.' };
+    return res.redirect('/login');
+  }
   req.session.userId = user.id;
   res.redirect('/');
 });
@@ -152,7 +157,9 @@ app.get('/', requireLogin, (req, res) => {
     const myVisits = db.prepare("SELECT COUNT(*) as c FROM field_visits WHERE user_id=? AND date(visit_time)=?").get(uid, today).c;
     const pendingLeaves = db.prepare("SELECT COUNT(*) as c FROM leaves WHERE user_id=? AND status='pending'").get(uid).c;
     const emp = db.prepare('SELECT * FROM users WHERE id=?').get(uid);
-    return res.render('dashboard-employee', { title: 'Home', todayAtt, myQuotes, myVisits, pendingLeaves, emp, today });
+    const monthClaim = db.prepare("SELECT COALESCE(SUM(total_claim),0) as t FROM travel_expenses WHERE user_id=? AND date LIKE ?")
+      .get(uid, new Date().toISOString().slice(0,7) + '%').t;
+    return res.render('dashboard-employee', { title: 'Home', todayAtt, myQuotes, myVisits, pendingLeaves, emp, today, monthClaim });
   }
 
   // ── Admin / HR dashboard ──
@@ -806,7 +813,8 @@ app.use('/salary',        requireLogin, salaryRoutes);
 app.use('/notifications', requireLogin, notifyRoutes);
 app.use('/hr',            requireLogin, requireManagerOrAdmin, hrRoutes);
 app.use('/visits',        requireLogin, visitsRoutes);
-app.use('/expenses',      requireLogin, expensesRoutes);
+app.use('/expenses',      requireLogin, requirePerm('expense_claim'), expensesRoutes);
+app.use('/travel-expenses', requireLogin, travelExpensesRoutes);
 app.use('/machines',          requireLogin, requireManagerOrAdmin, machinesRoutes);
 app.use('/enquiries',         requireLogin, requirePerm('enquiries'),        enquiriesRoutes);
 app.use('/sold-machines',     requireLogin, requirePerm('sold_machines'),    soldMachinesRoutes);
