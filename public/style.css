@@ -20,6 +20,11 @@ body { background: #f5f6fa; min-height: 100vh; }
   font-size: 16px;
   letter-spacing: 0.5px;
   flex: 1;
+  text-decoration: none;
+}
+.mobile-topbar .app-title:hover,
+.mobile-topbar .app-title:visited {
+  color: #fff;
 }
 .hamburger-btn {
   background: none;
