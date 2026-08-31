@@ -843,17 +843,12 @@ app.use('/salespersons',      requireLogin, requirePerm('salespersons_admin'), s
 app.use('/stock',             requireLogin, requirePerm('stock'),             stockRoutes);
 app.use('/form-22',           requireLogin, requirePerm('quotations'),        form22Routes);
 
-// Route map placeholder
+// Today's route: attendance check-in/out + site visits as GPS anchors
 app.get('/my-route', requireLogin, (req, res) => {
   const today = new Date().toISOString().slice(0,10);
-  const { db: _db } = require('./db');
-  const points = _db.prepare(`
-    SELECT lat, lng, type, recorded_at FROM route_points
-    WHERE user_id=? AND date(recorded_at)=? ORDER BY recorded_at`).all(req.session.userId, today);
-  // Also include attendance + visits as route anchors
-  const att = _db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.session.userId, today);
-  const visits = _db.prepare("SELECT lat, lng, customer_name, visit_time FROM field_visits WHERE user_id=? AND date(visit_time)=?").all(req.session.userId, today);
-  res.render('my-route', { title: 'My Route Today', points, att, visits, today });
+  const att = db.prepare('SELECT * FROM attendance WHERE user_id=? AND date=?').get(req.session.userId, today);
+  const visits = db.prepare("SELECT id, lat, lng, customer_name, purpose, visit_time FROM field_visits WHERE user_id=? AND date(visit_time)=? ORDER BY visit_time").all(req.session.userId, today);
+  res.render('my-route', { title: 'My Route Today', att, visits, today });
 });
 
 // ── HR redirect ────────────────────────────────────────────────────────────────
