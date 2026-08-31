@@ -38,8 +38,14 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label fw-semibold">Vehicle Number</label>
-                <input type="text" name="vehicle_number" class="form-control" placeholder="e.g. MH12AB1234"
-                  value="<%= expense ? expense.vehicle_number : (user.vehicle_number||'') %>">
+                <% const vn = expense ? expense.vehicle_number : (user.vehicle_number||''); %>
+                <% if (vn) { %>
+                <input type="text" class="form-control" value="<%= vn %>" disabled>
+                <small class="text-muted">From your profile</small>
+                <% } else { %>
+                <input type="text" class="form-control" value="Not set" disabled>
+                <small class="text-danger">No vehicle number on file — contact HR/Admin to add one.</small>
+                <% } %>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-semibold">Purpose of Travel</label>
@@ -70,57 +76,6 @@
               </div>
             </div>
             <div class="alert alert-info py-2 mt-3 mb-0 small" id="distancePreview">Distance: — km · Travel Amount: —</div>
-          </div>
-        </div>
-
-        <!-- Fuel -->
-        <div class="card border-0 shadow-sm mb-3">
-          <div class="card-header bg-white fw-semibold">Fuel Expense (optional)</div>
-          <div class="card-body">
-            <div class="row g-2">
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Fuel Type</label>
-                <select name="fuel_type" class="form-select">
-                  <option value="">—</option>
-                  <% ['Petrol','Diesel','CNG','EV','Other'].forEach(f => { %>
-                  <option <%= (expense?.fuel_type)===f?'selected':'' %>><%= f %></option>
-                  <% }) %>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Quantity</label>
-                <input type="number" step="0.01" name="fuel_qty" class="form-control" value="<%= expense?.fuel_qty || '' %>">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-semibold">Amount (₹)</label>
-                <input type="number" step="0.01" name="fuel_amount" id="fuelAmount" class="form-control" value="<%= expense?.fuel_amount || '' %>">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Other expenses -->
-        <div class="card border-0 shadow-sm mb-3">
-          <div class="card-header bg-white fw-semibold">Toll / Parking / Other</div>
-          <div class="card-body">
-            <div class="row g-2">
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">Toll (₹)</label>
-                <input type="number" step="0.01" name="toll_amount" id="tollAmount" class="form-control" value="<%= expense?.toll_amount || '' %>">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">Parking (₹)</label>
-                <input type="number" step="0.01" name="parking_amount" id="parkingAmount" class="form-control" value="<%= expense?.parking_amount || '' %>">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-semibold">Other (₹)</label>
-                <input type="number" step="0.01" name="other_amount" id="otherAmount" class="form-control" value="<%= expense?.other_amount || '' %>">
-              </div>
-              <div class="col-12">
-                <label class="form-label fw-semibold">Other — Description</label>
-                <input type="text" name="other_desc" class="form-control" value="<%= expense?.other_desc || '' %>">
-              </div>
-            </div>
           </div>
         </div>
 
@@ -157,8 +112,6 @@
           <div class="card-header bg-white fw-semibold">Claim Summary</div>
           <div class="card-body" id="claimSummary">
             <div class="d-flex justify-content-between small"><span>Travel</span><strong id="sumTravel">₹0</strong></div>
-            <div class="d-flex justify-content-between small"><span>Fuel</span><strong id="sumFuel">₹0</strong></div>
-            <div class="d-flex justify-content-between small"><span>Toll+Parking+Other</span><strong id="sumOther">₹0</strong></div>
             <hr class="my-2">
             <div class="d-flex justify-content-between"><span class="fw-bold">Total</span><strong class="text-danger fs-5" id="sumTotal">₹0</strong></div>
             <small class="text-muted d-block mt-2">Final amount is always recalculated by the server before saving.</small>
@@ -182,9 +135,6 @@
                 <% }) %>
               </div>
               <select id="docType" class="form-select form-select-sm mb-2">
-                <option value="fuel_receipt">Fuel Receipt</option>
-                <option value="toll_receipt">Toll Receipt</option>
-                <option value="parking_receipt">Parking Receipt</option>
                 <option value="odometer">Odometer / Trip Meter</option>
                 <option value="other">Other</option>
               </select>
@@ -227,20 +177,15 @@ function updateSummary() {
   const sel = document.getElementById('travelType');
   const rate = parseFloat(sel.options[sel.selectedIndex]?.dataset.rate || 0);
   const travel = Math.round(dist * rate * 100) / 100;
-  const fuel = parseFloat(document.getElementById('fuelAmount').value) || 0;
-  const other = (parseFloat(document.getElementById('tollAmount').value)||0) + (parseFloat(document.getElementById('parkingAmount').value)||0) + (parseFloat(document.getElementById('otherAmount').value)||0);
-  const total = travel + fuel + other;
 
   document.getElementById('distancePreview').textContent = `Distance: ${dist.toFixed(1)} km · Travel Amount: ₹${travel.toFixed(0)} (₹${rate}/km)`;
   document.getElementById('sumTravel').textContent = '₹' + travel.toFixed(0);
-  document.getElementById('sumFuel').textContent = '₹' + fuel.toFixed(0);
-  document.getElementById('sumOther').textContent = '₹' + other.toFixed(0);
-  document.getElementById('sumTotal').textContent = '₹' + total.toFixed(0);
+  document.getElementById('sumTotal').textContent = '₹' + travel.toFixed(0);
 
   if (e && s && e < s) document.getElementById('distancePreview').className = 'alert alert-danger py-2 mt-3 mb-0 small';
   else document.getElementById('distancePreview').className = 'alert alert-info py-2 mt-3 mb-0 small';
 }
-['startOdo','endOdo','travelType','fuelAmount','tollAmount','parkingAmount','otherAmount'].forEach(id => {
+['startOdo','endOdo','travelType'].forEach(id => {
   document.getElementById(id).addEventListener('input', updateSummary);
   document.getElementById(id).addEventListener('change', updateSummary);
 });

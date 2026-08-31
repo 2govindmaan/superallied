@@ -4,7 +4,7 @@ const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
 const path     = require('path');
 const fs       = require('fs');
-const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification, getUserPermissions, checkFollowupNotifications } = require('./db');
+const { db, getSettings, nextQuotationNumber, calcQuotation, formatINR, numberToWords, createNotification, getUserPermissions, checkFollowupNotifications, auditLog } = require('./db');
 const { generatePDF } = require('./pdf');
 
 // ── File storage setup ────────────────────────────────────────────────────────
@@ -213,11 +213,21 @@ app.post('/profile/photo', requireLogin, (req, res) => {
 });
 
 // ── Customers ─────────────────────────────────────────────────────────────────
+// Non-admins only see/manage customers they created themselves (plus legacy
+// customers created before ownership tracking existed, which have no owner).
+function canAccessCustomer(res, customer) {
+  return res.locals.user?.role === 'admin' || customer.created_by == null || customer.created_by === res.locals.user?.id;
+}
+
 app.get('/customers', requireLogin, (req, res) => {
   const q = req.query.q || '';
-  const customers = q
-    ? db.prepare("SELECT * FROM customers WHERE name LIKE ? OR phone LIKE ? OR gstin LIKE ? ORDER BY name").all(`%${q}%`, `%${q}%`, `%${q}%`)
-    : db.prepare('SELECT * FROM customers ORDER BY name').all();
+  const isAdmin = res.locals.user?.role === 'admin';
+  let sql = 'SELECT * FROM customers WHERE 1=1';
+  const params = [];
+  if (q) { sql += ' AND (name LIKE ? OR phone LIKE ? OR gstin LIKE ?)'; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  if (!isAdmin) { sql += ' AND (created_by=? OR created_by IS NULL)'; params.push(req.session.userId); }
+  sql += ' ORDER BY name';
+  const customers = db.prepare(sql).all(...params);
   res.render('customers', { title: 'Customers', customers, q });
 });
 
@@ -231,20 +241,28 @@ app.post('/customers', requireLogin, (req, res) => {
     req.session.flash = { error: 'Customer name is required.' };
     return res.redirect('/customers/new');
   }
-  db.prepare(`INSERT INTO customers (name,phone,address,city,state,gstin,hp_with,notes)
-              VALUES (?,?,?,?,?,?,?,?)`)
-    .run(name.trim(), phone||'', address||'', city||'', state||'', gstin||'', hp_with||'', notes||'');
+  db.prepare(`INSERT INTO customers (name,phone,address,city,state,gstin,hp_with,notes,created_by)
+              VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(name.trim(), phone||'', address||'', city||'', state||'', gstin||'', hp_with||'', notes||'', req.session.userId);
   req.session.flash = { success: `Customer "${name}" created.` };
   res.redirect('/customers');
 });
 
 app.get('/customers/:id/edit', requireLogin, (req, res) => {
   const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
-  if (!customer) return res.redirect('/customers');
+  if (!customer || !canAccessCustomer(res, customer)) {
+    req.session.flash = { error: customer ? `You don't have permission to edit this customer.` : 'Customer not found.' };
+    return res.redirect('/customers');
+  }
   res.render('customer-form', { title: 'Edit Customer', customer });
 });
 
 app.post('/customers/:id', requireLogin, (req, res) => {
+  const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+  if (!customer || !canAccessCustomer(res, customer)) {
+    req.session.flash = { error: customer ? `You don't have permission to edit this customer.` : 'Customer not found.' };
+    return res.redirect('/customers');
+  }
   const { name, phone, address, city, state, gstin, hp_with, notes } = req.body;
   db.prepare(`UPDATE customers SET name=?,phone=?,address=?,city=?,state=?,gstin=?,hp_with=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
     .run(name, phone||'', address||'', city||'', state||'', gstin||'', hp_with||'', notes||'', req.params.id);
@@ -253,13 +271,18 @@ app.post('/customers/:id', requireLogin, (req, res) => {
 });
 
 app.post('/customers/:id/delete', requireLogin, (req, res) => {
+  const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+  if (!customer || !canAccessCustomer(res, customer)) {
+    req.session.flash = { error: customer ? `You don't have permission to delete this customer.` : 'Customer not found.' };
+    return res.redirect('/customers');
+  }
   db.prepare('DELETE FROM customers WHERE id = ?').run(req.params.id);
   req.session.flash = { success: 'Customer deleted.' };
   res.redirect('/customers');
 });
 
 // ── Quotations ────────────────────────────────────────────────────────────────
-app.get('/quotations', requireLogin, (req, res) => {
+app.get('/quotations', requireLogin, requirePerm('quotations'), (req, res) => {
   const isAdmin = res.locals.user?.role === 'admin';
   const { status, q } = req.query;
   let sql = `SELECT qo.*, c.name as customer_name, m.display_name as machine_name
@@ -278,9 +301,12 @@ app.get('/quotations', requireLogin, (req, res) => {
   res.render('quotations', { title: 'Quotations', quotations, status: status||'', q: q||'', formatINR, calcQuotation, settings: s });
 });
 
-app.get('/quotations/new', requireLogin, (req, res) => {
+app.get('/quotations/new', requireLogin, requirePerm('quotations'), (req, res) => {
+  const isAdmin      = res.locals.user?.role === 'admin';
   const machines     = db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY model_series, display_name').all();
-  const customers    = db.prepare('SELECT * FROM customers ORDER BY name').all();
+  const customers    = isAdmin
+    ? db.prepare('SELECT * FROM customers ORDER BY name').all()
+    : db.prepare('SELECT * FROM customers WHERE created_by=? OR created_by IS NULL ORDER BY name').all(req.session.userId);
   const salespersons = db.prepare('SELECT id,name FROM salespersons WHERE active=1 ORDER BY name').all();
   const prefill      = req.query.customer_id || '';
   const s            = getSettings();
@@ -288,7 +314,7 @@ app.get('/quotations/new', requireLogin, (req, res) => {
     defaultSalesperson: s.contact_name || '', defaultSalespersonPhone: s.contact_phone || '' });
 });
 
-app.post('/quotations', requireLogin, (req, res) => {
+app.post('/quotations', requireLogin, requirePerm('quotations'), (req, res) => {
   const {
     customer_id, machine_id, quantity, basic_price, transit_insurance,
     tax_mode, cgst_rate, sgst_rate, igst_rate,
@@ -326,7 +352,7 @@ app.post('/quotations', requireLogin, (req, res) => {
   res.redirect('/quotations');
 });
 
-app.get('/quotations/:id', requireLogin, (req, res) => {
+app.get('/quotations/:id', requireLogin, requirePerm('quotations'), (req, res) => {
   const isAdmin = res.locals.user?.role === 'admin';
   const q = db.prepare(`
     SELECT qo.*, c.name as customer_name, c.phone as customer_phone,
@@ -348,18 +374,28 @@ app.get('/quotations/:id', requireLogin, (req, res) => {
   res.render('quotation-view', { title: `Quotation ${q.quotation_number}`, q, calc, specs, formatINR });
 });
 
-app.get('/quotations/:id/edit', requireLogin, (req, res) => {
+app.get('/quotations/:id/edit', requireLogin, requirePerm('quotations'), (req, res) => {
+  const isAdmin   = res.locals.user?.role === 'admin';
   const quotation = db.prepare('SELECT * FROM quotations WHERE id = ?').get(req.params.id);
   if (!quotation) return res.redirect('/quotations');
+  if (!isAdmin && quotation.user_id !== req.session.userId) return res.redirect('/quotations');
   const machines  = db.prepare('SELECT * FROM machines WHERE active = 1 ORDER BY model_series, display_name').all();
-  const customers = db.prepare('SELECT * FROM customers ORDER BY name').all();
+  const customers = isAdmin
+    ? db.prepare('SELECT * FROM customers ORDER BY name').all()
+    : db.prepare('SELECT * FROM customers WHERE created_by=? OR created_by IS NULL ORDER BY name').all(req.session.userId);
   const s         = getSettings();
   const salespersons2 = db.prepare('SELECT id,name FROM salespersons WHERE active=1 ORDER BY name').all();
   res.render('quotation-form', { title: 'Edit Quotation', quotation, machines, customers, salespersons: salespersons2, prefill: '', formatINR,
     defaultSalesperson: s.contact_name || '', defaultSalespersonPhone: s.contact_phone || '' });
 });
 
-app.post('/quotations/:id', requireLogin, (req, res) => {
+app.post('/quotations/:id', requireLogin, requirePerm('quotations'), (req, res) => {
+  const isAdmin = res.locals.user?.role === 'admin';
+  const existing = db.prepare('SELECT user_id FROM quotations WHERE id=?').get(req.params.id);
+  if (!existing || (!isAdmin && existing.user_id !== req.session.userId)) {
+    req.session.flash = { error: `You don't have permission to edit this quotation.` };
+    return res.redirect('/quotations');
+  }
   const {
     customer_id, machine_id, quantity, basic_price, transit_insurance,
     tax_mode, cgst_rate, sgst_rate, igst_rate,
@@ -386,13 +422,20 @@ app.post('/quotations/:id', requireLogin, (req, res) => {
   res.redirect(`/quotations/${req.params.id}`);
 });
 
-app.post('/quotations/:id/delete', requireLogin, (req, res) => {
+app.post('/quotations/:id/delete', requireLogin, requirePerm('quotations'), (req, res) => {
+  const isAdmin = res.locals.user?.role === 'admin';
+  const existing = db.prepare('SELECT user_id FROM quotations WHERE id=?').get(req.params.id);
+  if (!existing || (!isAdmin && existing.user_id !== req.session.userId)) {
+    req.session.flash = { error: `You don't have permission to delete this quotation.` };
+    return res.redirect('/quotations');
+  }
   db.prepare('DELETE FROM quotations WHERE id = ?').run(req.params.id);
   req.session.flash = { success: 'Quotation deleted.' };
   res.redirect('/quotations');
 });
 
-app.get('/quotations/:id/pdf', requireLogin, async (req, res) => {
+app.get('/quotations/:id/pdf', requireLogin, requirePerm('quotations'), async (req, res) => {
+  const isAdmin = res.locals.user?.role === 'admin';
   const q = db.prepare(`
     SELECT qo.*, c.name as customer_name, c.phone as customer_phone,
            c.address as customer_address, c.city as customer_city,
@@ -406,6 +449,7 @@ app.get('/quotations/:id/pdf', requireLogin, async (req, res) => {
     JOIN machines m  ON m.id = qo.machine_id
     WHERE qo.id = ?`).get(req.params.id);
   if (!q) return res.status(404).send('Not found');
+  if (!isAdmin && q.user_id !== req.session.userId) return res.status(403).send('Forbidden');
 
   const s    = getSettings();
   const calc = calcQuotation(q, s);
@@ -492,7 +536,7 @@ app.post('/settings/password', requireLogin, (req, res) => {
 
 // ── Users (admin only) ────────────────────────────────────────────────────────
 app.get('/users', requireLogin, requireAdmin, (req, res) => {
-  const users = db.prepare('SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at').all();
+  const users = db.prepare('SELECT id, username, full_name, role, is_hr_active, created_at FROM users ORDER BY created_at').all();
   res.render('users', { title: 'Users', users });
 });
 
@@ -527,64 +571,34 @@ app.post('/users', requireLogin, requireAdmin, (req, res) => {
   res.redirect('/users');
 });
 
-app.post('/users/:id/delete', requireLogin, requireAdmin, (req, res) => {
-  const uid      = +req.params.id;
-  const reassign = req.body.reassign === '1';
+// Hard-deleting a user cascades across attendance, salary, quotations, travel
+// expenses, and other financial/HR records — the FOREIGN KEY failures that
+// used to surface here are exactly why the app deactivates instead of
+// deleting everywhere else (see /hr/employees). These two routes replace the
+// old destructive delete.
+app.post('/users/:id/deactivate', requireLogin, requireAdmin, (req, res) => {
+  const uid = +req.params.id;
   if (uid === req.session.userId) {
-    req.session.flash = { error: 'You cannot delete your own account.' };
+    req.session.flash = { error: 'You cannot deactivate your own account.' };
     return res.redirect('/users');
   }
-  const u = db.prepare('SELECT username FROM users WHERE id = ?').get(uid);
+  const u = db.prepare('SELECT username, full_name FROM users WHERE id = ?').get(uid);
   if (!u) { req.session.flash = { error: 'User not found.' }; return res.redirect('/users'); }
 
-  // Find admin id to reassign to
-  const adminUser = db.prepare("SELECT id FROM users WHERE role='admin' ORDER BY id ASC LIMIT 1").get();
-  const reassignTo = adminUser ? adminUser.id : null;
+  db.prepare('UPDATE users SET is_hr_active=0 WHERE id=?').run(uid);
+  auditLog(req.session.userId, 'user_deactivated', 'user', uid, `Deactivated "${u.full_name || u.username}"`);
+  req.session.flash = { success: `${u.full_name || u.username} deactivated. Their records are preserved; they can no longer log in.` };
+  res.redirect('/users');
+});
 
-  try {
-    db.exec('BEGIN');
-    db.exec('PRAGMA foreign_keys = OFF');
+app.post('/users/:id/activate', requireLogin, requireAdmin, (req, res) => {
+  const uid = +req.params.id;
+  const u = db.prepare('SELECT username, full_name FROM users WHERE id = ?').get(uid);
+  if (!u) { req.session.flash = { error: 'User not found.' }; return res.redirect('/users'); }
 
-    if (reassign && reassignTo) {
-      // Reassign all work to admin
-      db.prepare('UPDATE spare_quotations SET created_by=?  WHERE created_by=?').run(reassignTo, uid);
-      db.prepare('UPDATE spare_quotations SET approved_by=? WHERE approved_by=?').run(reassignTo, uid);
-      db.prepare('UPDATE sold_machines    SET created_by=?  WHERE created_by=?').run(reassignTo, uid);
-      db.prepare('UPDATE leads            SET created_by=?  WHERE created_by=?').run(reassignTo, uid);
-      db.prepare('UPDATE quotations       SET user_id=?     WHERE user_id=?').run(reassignTo, uid);
-      db.prepare('UPDATE stock_availability SET updated_by=? WHERE updated_by=?').run(reassignTo, uid);
-    } else {
-      // Nullify / unassign
-      db.prepare('UPDATE spare_quotations SET created_by=NULL  WHERE created_by=?').run(uid);
-      db.prepare('UPDATE spare_quotations SET approved_by=NULL WHERE approved_by=?').run(uid);
-      db.prepare('UPDATE sold_machines    SET created_by=NULL  WHERE created_by=?').run(uid);
-      db.prepare('UPDATE leads            SET created_by=NULL  WHERE created_by=?').run(uid);
-      db.prepare('UPDATE quotations       SET user_id=0        WHERE user_id=?').run(uid);
-      db.prepare('UPDATE stock_availability SET updated_by=NULL WHERE updated_by=?').run(uid);
-    }
-
-    // Always delete personal HR records
-    db.prepare('DELETE FROM attendance     WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM leaves         WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM leave_balances WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM salary_records WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM notifications  WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM expenses       WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM visits         WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM audit_log      WHERE user_id=?').run(uid);
-    db.prepare('DELETE FROM users WHERE id=?').run(uid);
-    db.exec('PRAGMA foreign_keys = ON');
-    db.exec('COMMIT');
-
-    const msg = reassign && reassignTo
-      ? `User "${u.username}" deleted. All records reassigned to admin.`
-      : `User "${u.username}" deleted.`;
-    req.session.flash = { success: msg };
-  } catch(e) {
-    db.exec('ROLLBACK');
-    db.exec('PRAGMA foreign_keys = ON');
-    req.session.flash = { error: `Could not delete user: ${e.message}` };
-  }
+  db.prepare('UPDATE users SET is_hr_active=1 WHERE id=?').run(uid);
+  auditLog(req.session.userId, 'user_activated', 'user', uid, `Activated "${u.full_name || u.username}"`);
+  req.session.flash = { success: `${u.full_name || u.username} activated. They can log in again.` };
   res.redirect('/users');
 });
 
@@ -603,7 +617,12 @@ app.get('/api/spare/machine-lookup', requireLogin, (req, res) => {
 
 app.get('/api/customers/search', requireLogin, (req, res) => {
   const q = req.query.q || '';
-  const rows = db.prepare("SELECT id, name, phone, gstin FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT 10").all(`%${q}%`, `%${q}%`);
+  const isAdmin = res.locals.user?.role === 'admin';
+  let sql = "SELECT id, name, phone, gstin FROM customers WHERE (name LIKE ? OR phone LIKE ?)";
+  const params = [`%${q}%`, `%${q}%`];
+  if (!isAdmin) { sql += ' AND (created_by=? OR created_by IS NULL)'; params.push(req.session.userId); }
+  sql += ' LIMIT 10';
+  const rows = db.prepare(sql).all(...params);
   res.json(rows);
 });
 

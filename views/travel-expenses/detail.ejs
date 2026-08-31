@@ -93,10 +93,6 @@
         <div class="card-header bg-white fw-semibold">Claim Breakdown</div>
         <div class="card-body">
           <div class="d-flex justify-content-between small"><span>Travel (<%= expense.distance_km.toFixed(1) %> km × ₹<%= expense.rate_per_km %>)</span><strong>₹<%= expense.travel_amount.toFixed(0) %></strong></div>
-          <div class="d-flex justify-content-between small mt-1"><span>Fuel<% if(expense.fuel_type){ %> (<%= expense.fuel_type %>)<% } %></span><strong>₹<%= expense.fuel_amount.toFixed(0) %></strong></div>
-          <div class="d-flex justify-content-between small mt-1"><span>Toll</span><strong>₹<%= expense.toll_amount.toFixed(0) %></strong></div>
-          <div class="d-flex justify-content-between small mt-1"><span>Parking</span><strong>₹<%= expense.parking_amount.toFixed(0) %></strong></div>
-          <div class="d-flex justify-content-between small mt-1"><span>Other<% if(expense.other_desc){ %> (<%= expense.other_desc %>)<% } %></span><strong>₹<%= expense.other_amount.toFixed(0) %></strong></div>
           <hr class="my-2">
           <div class="d-flex justify-content-between"><span class="fw-bold">Total Claim</span><strong class="text-danger fs-5">₹<%= expense.total_claim.toFixed(0) %></strong></div>
         </div>

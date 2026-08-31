@@ -17,13 +17,14 @@
             <th>Username</th>
             <th>Full Name</th>
             <th>Role</th>
+            <th>Status</th>
             <th>Created</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <% users.forEach(u => { %>
-          <tr>
+          <tr class="<%= u.is_hr_active===0 ? 'opacity-50' : '' %>">
             <td class="fw-semibold font-monospace"><%= u.username %></td>
             <td><%= u.full_name || '—' %></td>
             <td>
@@ -31,13 +32,19 @@
               <% const rl = {admin:'Admin',manager:'Manager',sales:'Sales',office:'Office',hr:'HR',service:'Service',staff:'Staff',employee:'Employee'}; %>
               <span class="badge <%= rb[u.role]||'bg-secondary' %>"><%= rl[u.role]||u.role %></span>
             </td>
+            <td><span class="badge <%= u.is_hr_active===0?'bg-secondary':'bg-success' %>"><%= u.is_hr_active===0?'Inactive':'Active' %></span></td>
             <td class="text-muted small"><%= new Date(u.created_at).toLocaleDateString('en-IN') %></td>
             <td class="text-end">
               <% if (u.id !== user.id) { %>
-              <button class="btn btn-sm btn-outline-danger"
-                onclick="confirmDelete(<%= u.id %>, '<%= (u.username||'').replace(/'/g,"\\'") %>', '<%= (u.full_name||u.username||'').replace(/'/g,"\\'") %>')">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+                <% if (u.is_hr_active === 0) { %>
+                <form method="POST" action="/users/<%= u.id %>/activate" class="d-inline" data-confirm-activate="<%= u.full_name || u.username %>">
+                  <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-circle"></i> Activate</button>
+                </form>
+                <% } else { %>
+                <form method="POST" action="/users/<%= u.id %>/deactivate" class="d-inline" data-confirm-deactivate="<%= u.full_name || u.username %>">
+                  <button class="btn btn-sm btn-outline-warning"><i class="bi bi-slash-circle"></i> Deactivate</button>
+                </form>
+                <% } %>
               <% } else { %>
               <span class="text-muted small">(you)</span>
               <% } %>
@@ -45,7 +52,7 @@
           </tr>
           <% }) %>
           <% if (!users.length) { %>
-          <tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>
           <% } %>
         </tbody>
       </table>
@@ -69,44 +76,12 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Delete User Modal -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header py-2 bg-danger text-white">
-        <h6 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete User</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <form id="deleteUserForm" method="POST">
-        <div class="modal-body">
-          <p class="mb-2">You are about to delete <strong id="delUserLabel"></strong>.</p>
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="reassign" value="1" id="chkReassign" checked>
-            <label class="form-check-label" for="chkReassign">
-              Reassign all quotations, leads, and records created by this user to <strong>Admin</strong>
-            </label>
-          </div>
-          <div class="alert alert-warning small mb-0">
-            <i class="bi bi-info-circle me-1"></i>
-            If unchecked, all records created by this user will be <strong>unassigned</strong>.
-            Either way, personal records (attendance, leaves, salary, expenses) will be deleted.
-          </div>
-        </div>
-        <div class="modal-footer py-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash me-1"></i>Delete User</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
 <script>
-function confirmDelete(id, username, fullName) {
-  document.getElementById('deleteUserForm').action = '/users/' + id + '/delete';
-  document.getElementById('delUserLabel').textContent = fullName + ' (' + username + ')';
-  new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
-}
+document.querySelectorAll('[data-confirm-activate]').forEach(f => {
+  f.addEventListener('submit', e => { if (!confirm('Activate ' + f.dataset.confirmActivate + '?')) e.preventDefault(); });
+});
+document.querySelectorAll('[data-confirm-deactivate]').forEach(f => {
+  f.addEventListener('submit', e => { if (!confirm('Deactivate ' + f.dataset.confirmDeactivate + '? They will not be able to log in. Their records are preserved.')) e.preventDefault(); });
+});
 </script>
 </body></html>

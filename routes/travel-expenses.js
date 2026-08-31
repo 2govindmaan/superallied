@@ -19,20 +19,18 @@ function requireApprover(req, res, next) {
   res.redirect('/');
 }
 
-// ── Recalculate distance / amounts server-side — never trust the client ──────
-function recalc({ start_odo, end_odo, travel_type, fuel_amount, toll_amount, parking_amount, other_amount }) {
+// ── Recalculate distance / amount server-side — never trust the client ───────
+// Fuel/toll/parking/other capture is deferred to a later phase; the claim is
+// travel (distance × rate) only for now. The columns stay in the schema so
+// re-enabling them later doesn't need a migration.
+function recalc({ start_odo, end_odo, travel_type }) {
   const s = parseFloat(start_odo) || 0;
   const e = parseFloat(end_odo) || 0;
   const distance_km = Math.max(0, e - s);
   const rateRow = db.prepare('SELECT rate_per_km FROM expense_rates WHERE vehicle_type=?').get(travel_type);
   const rate_per_km = rateRow ? rateRow.rate_per_km : 0;
   const travel_amount = Math.round(distance_km * rate_per_km * 100) / 100;
-  const fuel = parseFloat(fuel_amount) || 0;
-  const toll = parseFloat(toll_amount) || 0;
-  const parking = parseFloat(parking_amount) || 0;
-  const other = parseFloat(other_amount) || 0;
-  const total_claim = travel_amount + fuel + toll + parking + other;
-  return { distance_km, rate_per_km, travel_amount, total_claim };
+  return { distance_km, rate_per_km, travel_amount, total_claim: travel_amount };
 }
 
 router.get('/', (req, res) => res.redirect('/travel-expenses/my'));
@@ -76,9 +74,7 @@ router.get('/:id/edit', requireClaimAccess, (req, res) => {
 // ── Create / update (always saved as draft) ───────────────────────────────────
 router.post('/', requireClaimAccess, (req, res) => {
   const uid = req.session.userId;
-  const { id, date, travel_type, vehicle_number, purpose, start_odo, end_odo,
-          fuel_type, fuel_qty, fuel_amount, toll_amount, parking_amount, other_amount, other_desc,
-          remarks, visit_ids } = req.body;
+  const { id, date, travel_type, purpose, start_odo, end_odo, remarks, visit_ids } = req.body;
 
   const s = parseFloat(start_odo) || 0;
   const e = parseFloat(end_odo) || 0;
@@ -87,9 +83,12 @@ router.post('/', requireClaimAccess, (req, res) => {
     return res.redirect(id ? `/travel-expenses/${id}/edit` : '/travel-expenses/new');
   }
 
-  const { distance_km, rate_per_km, travel_amount, total_claim } = recalc({
-    start_odo: s, end_odo: e, travel_type, fuel_amount, toll_amount, parking_amount, other_amount,
-  });
+  // Vehicle number is the employee's stationary vehicle number from their
+  // profile — never taken from the submitted form, so it can't be spoofed
+  // or drift trip-to-trip.
+  const profileVehicleNumber = db.prepare('SELECT vehicle_number FROM users WHERE id=?').get(uid)?.vehicle_number || '';
+
+  const { distance_km, rate_per_km, travel_amount, total_claim } = recalc({ start_odo: s, end_odo: e, travel_type });
 
   let expenseId = id ? +id : null;
 
@@ -101,22 +100,17 @@ router.post('/', requireClaimAccess, (req, res) => {
     }
     db.prepare(`UPDATE travel_expenses SET date=?,travel_type=?,vehicle_number=?,purpose=?,
       start_odo=?,end_odo=?,distance_km=?,rate_per_km=?,travel_amount=?,
-      fuel_type=?,fuel_qty=?,fuel_amount=?,toll_amount=?,parking_amount=?,other_amount=?,other_desc=?,
       total_claim=?,remarks=?,status='draft' WHERE id=?`)
-      .run(date||today(), travel_type||'Own Two Wheeler', vehicle_number||'', purpose||'',
+      .run(date||today(), travel_type||'Own Two Wheeler', profileVehicleNumber, purpose||'',
         s, e, distance_km, rate_per_km, travel_amount,
-        fuel_type||'', parseFloat(fuel_qty)||0, parseFloat(fuel_amount)||0,
-        parseFloat(toll_amount)||0, parseFloat(parking_amount)||0, parseFloat(other_amount)||0, other_desc||'',
         total_claim, remarks||'', expenseId);
   } else {
     const result = db.prepare(`INSERT INTO travel_expenses
       (expense_number,user_id,date,travel_type,vehicle_number,purpose,start_odo,end_odo,distance_km,rate_per_km,
-       travel_amount,fuel_type,fuel_qty,fuel_amount,toll_amount,parking_amount,other_amount,other_desc,total_claim,remarks,status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'draft')`)
-      .run(nextExpenseNumber(), uid, date||today(), travel_type||'Own Two Wheeler', vehicle_number||'', purpose||'',
+       travel_amount,total_claim,remarks,status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'draft')`)
+      .run(nextExpenseNumber(), uid, date||today(), travel_type||'Own Two Wheeler', profileVehicleNumber, purpose||'',
         s, e, distance_km, rate_per_km, travel_amount,
-        fuel_type||'', parseFloat(fuel_qty)||0, parseFloat(fuel_amount)||0,
-        parseFloat(toll_amount)||0, parseFloat(parking_amount)||0, parseFloat(other_amount)||0, other_desc||'',
         total_claim, remarks||'');
     expenseId = result.lastInsertRowid;
     auditLog(uid, 'expense_created', 'travel_expenses', expenseId, `Distance ${distance_km}km`);
@@ -204,14 +198,12 @@ router.get('/my', requireClaimAccess, (req, res) => {
     .reduce((a, r) => { a[r.status] = r.c; return a; }, {});
 
   const monthStart = new Date().toISOString().slice(0, 7);
-  const monthRows = db.prepare(`SELECT status, SUM(distance_km) as km, SUM(travel_amount) as travel, SUM(fuel_amount) as fuel,
-      SUM(toll_amount+parking_amount+other_amount) as other, SUM(total_claim) as total
+  const monthRows = db.prepare(`SELECT status, SUM(distance_km) as km, SUM(travel_amount) as travel, SUM(total_claim) as total
     FROM travel_expenses WHERE user_id=? AND date LIKE ? GROUP BY status`).all(uid, monthStart + '%');
 
-  const monthSummary = { km: 0, travel: 0, fuel: 0, other: 0, total: 0, submitted: 0, approved: 0, pending: 0 };
+  const monthSummary = { km: 0, travel: 0, total: 0, submitted: 0, approved: 0, pending: 0 };
   monthRows.forEach(r => {
-    monthSummary.km += r.km || 0; monthSummary.travel += r.travel || 0;
-    monthSummary.fuel += r.fuel || 0; monthSummary.other += r.other || 0; monthSummary.total += r.total || 0;
+    monthSummary.km += r.km || 0; monthSummary.travel += r.travel || 0; monthSummary.total += r.total || 0;
     if (r.status === 'submitted') monthSummary.submitted += r.total || 0;
     if (r.status === 'approved')  monthSummary.approved  += r.total || 0;
     if (r.status === 'submitted') monthSummary.pending    += r.total || 0;

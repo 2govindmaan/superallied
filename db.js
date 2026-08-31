@@ -105,6 +105,9 @@ db.exec(`
 
 // ── Safe migrations ───────────────────────────────────────────────────────────
 
+// Customer ownership (so non-admins only see customers they created)
+try { db.exec("ALTER TABLE customers ADD COLUMN created_by INTEGER REFERENCES users(id)"); } catch(e) {}
+
 // Quotation columns
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_name TEXT DEFAULT ''"); } catch(e) {}
 try { db.exec("ALTER TABLE quotations ADD COLUMN salesperson_phone TEXT DEFAULT ''"); } catch(e) {}
@@ -351,7 +354,7 @@ db.exec(`
 
 // Seed default reimbursement rates (admin/manager-editable via /travel-expenses/rates)
 const insertRate = db.prepare('INSERT OR IGNORE INTO expense_rates (vehicle_type, rate_per_km) VALUES (?,?)');
-[['Own Two Wheeler', 4], ['Own Four Wheeler', 8], ['Company Vehicle', 0], ['Other', 4]]
+[['Own Two Wheeler', 3], ['Own Four Wheeler', 5], ['Company Vehicle', 0], ['Other', 4]]
   .forEach(r => insertRate.run(...r));
 
 // Add is_active column to leave_types if missing
@@ -462,8 +465,8 @@ const defaultPerms = [
   ['manager','spare_quotations'],['manager','sold_machines'],['manager','spare_parts'],['manager','spare_reports'],['manager','stock'],
   ['manager','salespersons_admin'],
 
-  // sales — machine quotations, enquiries, visits, HR self-service
-  ['sales','quotations'],['sales','enquiries'],['sales','field_visit'],['sales','route_map'],
+  // sales — enquiries, visits, HR self-service (no machine quotations/Form 22 — removed 2026)
+  ['sales','enquiries'],['sales','field_visit'],['sales','route_map'],
   ['sales','attendance'],['sales','expense_claim'],['sales','customers'],
 
   // office — machine + spare quotations, sold machines, parts, enquiries, HR self-service
@@ -481,8 +484,8 @@ const defaultPerms = [
   // manager — travel expense approvals
   ['manager','expense_approval'],
 
-  // staff (legacy alias for sales)
-  ['staff','attendance'],['staff','field_visit'],['staff','quotations'],['staff','customers'],['staff','enquiries'],
+  // staff (legacy alias for sales — no machine quotations/Form 22, matches sales)
+  ['staff','attendance'],['staff','field_visit'],['staff','customers'],['staff','enquiries'],
   ['staff','expense_claim'],
 
   // employee (attendance only)
@@ -490,6 +493,9 @@ const defaultPerms = [
 ];
 
 defaultPerms.forEach(([r,p]) => insertPerm.run(r,p));
+// Sales (and its legacy alias "staff") no longer get Machine Quotations/Form 22 —
+// remove the row on existing DBs too, not just skip seeding it on fresh ones.
+db.prepare("DELETE FROM role_permissions WHERE role IN ('sales','staff') AND permission='quotations'").run();
 
 // Seed admin user
 const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
