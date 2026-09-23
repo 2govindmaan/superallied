@@ -4,6 +4,18 @@
 
 module.exports = [
   {
+    date: '2026-09-23',
+    items: [
+      { commit: '', type: 'improved', title: 'Sidebar redesigned into 5 sections',
+        details: ['Sales, Operations, Spares, Service and Human Resources, each collapsible.',
+                  'You only see the sections and links your login role can use.',
+                  'The section for the current page opens automatically; your open/closed choices are remembered.',
+                  'My Route and Update Prices now have their own menu links.'] },
+      { commit: 'c8fad69', type: 'new', title: 'Help & Updates page',
+        details: ['Tap the (?) icon to see every app improvement, date by date.'] },
+    ],
+  },
+  {
     date: '2026-08-31',
     items: [
       { commit: '82e75f7', type: 'improved', title: 'Mobile top bar title goes home',

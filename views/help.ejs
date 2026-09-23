@@ -42,7 +42,7 @@
             </ul>
             <% } %>
           </div>
-          <code class="small text-muted d-none d-sm-inline"><%= it.commit %></code>
+          <% if (it.commit) { %><code class="small text-muted d-none d-sm-inline"><%= it.commit %></code><% } %>
         </div>
       </div>
       <% }) %>

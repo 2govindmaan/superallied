@@ -89,6 +89,7 @@ app.use((req, res, next) => {
     ? db.prepare('SELECT id, username, full_name, role FROM users WHERE id = ?').get(req.session.userId)
     : null;
   res.locals.user     = u;
+  res.locals.currentPath = req.originalUrl.split('?')[0]; // sidebar highlights the matching link
   res.locals.settings = getSettings();
   res.locals.unreadCount = u
     ? (db.prepare('SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND is_read=0').get(u.id)?.c || 0)

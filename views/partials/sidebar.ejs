@@ -1,9 +1,96 @@
 <%
-  const salesActive  = ['enquiries','visits','quotations','customers','machines','calculator','salespersons','route','form22'].includes(active);
-  const sparesActive = ['sold-machines','spare-quotations','spare-parts','spare-reports','stock'].includes(active);
-  const hrActive     = ['attendance','leaves','salary','id-card','profile','notifications','users','settings','hr','expenses','travel-expenses'].includes(active);
-  const isAdmin      = user && user.role === 'admin';
-  const isMgr        = user && (user.role === 'admin' || user.role === 'manager');
+  const isAdmin = user && user.role === 'admin';
+  const isMgr   = user && (user.role === 'admin' || user.role === 'manager');
+  const can     = (p) => isAdmin || hasPerm(p);
+
+  // Menu = sections → groups → links. `show` decides visibility for the logged-in
+  // user; a group or section with nothing visible is not rendered at all.
+  // `keys` are the `active` values pages pass in, used when the URL alone doesn't match.
+  const menu = [
+    { id: 'sales', label: 'Sales', icon: 'bi-graph-up-arrow', groups: [
+      { items: [
+        { href: '/enquiries',           icon: 'bi-funnel-fill',            label: 'Enquiries',          show: isMgr || can('enquiries'), keys: ['enquiries'] },
+        { href: '/enquiries/pipeline',  icon: 'bi-kanban',                 label: 'Enquiry Pipeline',   show: isMgr || can('enquiries') },
+        { href: '/enquiries/dashboard', icon: 'bi-bar-chart-fill',         label: 'Enquiry Dashboard',  show: isMgr || can('enquiries') },
+        { href: '/customers',           icon: 'bi-people-fill',            label: 'Customers',          show: can('customers'),  keys: ['customers'] },
+        { href: '/quotations',          icon: 'bi-file-earmark-text-fill', label: 'Machine Quotations', show: can('quotations'), keys: ['quotations'] },
+      ]},
+      { label: 'Sales Team', items: [
+        { href: '/salespersons',                 icon: 'bi-person-badge-fill', label: 'Salespersons',      show: isMgr, keys: ['salespersons'] },
+        { href: '/salespersons/reports/summary', icon: 'bi-bar-chart-fill',    label: 'Sales Reports',     show: isMgr },
+        { href: '/calculator',                   icon: 'bi-calculator-fill',   label: 'Profit Calculator', show: isAdmin, keys: ['calculator'] },
+      ]},
+    ]},
+    { id: 'operations', label: 'Operations', icon: 'bi-gear-wide-connected', groups: [
+      { items: [
+        { href: '/form-22',               icon: 'bi-patch-check-fill', label: 'Form 22',        show: can('quotations'), keys: ['form22'] },
+        { href: '/machines',              icon: 'bi-sliders2',         label: 'Machine Master', show: isMgr, keys: ['machines'] },
+        { href: '/machines/price-update', icon: 'bi-currency-rupee',   label: 'Update Prices',  show: isMgr },
+      ]},
+      { label: 'System', items: [
+        { href: '/users',    icon: 'bi-person-gear', label: 'Users',    show: isAdmin, keys: ['users'] },
+        { href: '/settings', icon: 'bi-sliders',     label: 'Settings', show: isAdmin, keys: ['settings'] },
+      ]},
+    ]},
+    { id: 'spares', label: 'Spares', icon: 'bi-box-seam-fill', groups: [
+      { items: [
+        { href: '/spare-quotations',                 icon: 'bi-receipt-cutoff',       label: 'Spare Quotations',   show: can('spare_quotations'), keys: ['spare-quotations'] },
+        { href: '/spare-parts',                      icon: 'bi-boxes',                label: 'Parts Master',       show: can('spare_parts'),      keys: ['spare-parts'] },
+        { href: '/stock',                            icon: 'bi-clipboard-data',       label: 'Stock Availability', show: can('stock'),            keys: ['stock'] },
+        { href: '/spare-quotations/reports/summary', icon: 'bi-bar-chart-line-fill',  label: 'Parts Reports',      show: can('spare_reports'),    keys: ['spare-reports'] },
+      ]},
+    ]},
+    { id: 'service', label: 'Service', icon: 'bi-tools', groups: [
+      { items: [
+        { href: '/sold-machines', icon: 'bi-hdd-rack-fill', label: 'Sold Machines', show: can('sold_machines'), keys: ['sold-machines'] },
+        { href: '/visits',        icon: 'bi-geo-alt-fill',  label: 'Site Visits',   show: can('field_visit'),   keys: ['visits'] },
+        { href: '/my-route',      icon: 'bi-map-fill',      label: 'My Route',      show: can('route_map'),     keys: ['route'] },
+      ]},
+    ]},
+    { id: 'hr', label: 'Human Resources', icon: 'bi-people-fill', groups: [
+      { items: [
+        { href: '/notifications', icon: 'bi-bell-fill',            label: 'Notifications', show: true, keys: ['notifications'], badge: unreadCount },
+        { href: '/attendance',    icon: 'bi-calendar-check-fill',  label: 'Attendance',    show: hasPerm('attendance'), keys: ['attendance'] },
+        { href: '/leaves',        icon: 'bi-calendar-x-fill',      label: 'My Leaves',     show: true, keys: ['leaves'] },
+        { href: '/salary',        icon: 'bi-cash-coin',            label: 'My Salary',     show: true, keys: ['salary'] },
+        { href: '/id-card',       icon: 'bi-credit-card-2-front-fill', label: 'ID Card',   show: true, keys: ['id-card'] },
+        { href: '/profile',       icon: 'bi-person-circle',        label: 'My Profile',    show: true, keys: ['profile'] },
+      ]},
+      { label: 'Expenses', items: [
+        { href: '/travel-expenses/new',       icon: 'bi-truck',          label: 'New Travel Expense',  show: can('expense_claim') },
+        { href: '/travel-expenses/my',        icon: 'bi-receipt-cutoff', label: 'My Travel Expenses',  show: can('expense_claim'), keys: ['travel-expenses'] },
+        { href: '/travel-expenses/queue',     icon: 'bi-check2-square',  label: 'Expense Approvals',   show: can('expense_approval') },
+        { href: '/travel-expenses/admin/rates', icon: 'bi-sliders',      label: 'Expense Rate Config', show: isMgr },
+      ]},
+      { label: 'HR Admin', items: [
+        { href: '/hr/dashboard',  icon: 'bi-grid-fill',            label: 'HR Dashboard',      show: can('hr_admin'), keys: ['hr'] },
+        { href: '/hr/employees',  icon: 'bi-person-lines-fill',    label: 'Employees',         show: can('hr_admin') },
+        { href: '/hr/attendance', icon: 'bi-calendar-week-fill',   label: 'Attendance Report', show: can('hr_admin') },
+        { href: '/hr/leaves',     icon: 'bi-check2-square',        label: 'Leave Approvals',   show: can('hr_admin') && can('leave_approval') },
+        { href: '/hr/salary',     icon: 'bi-wallet2',              label: 'Salary Manager',    show: can('hr_admin') && can('salary_admin') },
+      ]},
+    ]},
+  ];
+
+  // Drop hidden links / empty groups / empty sections for this user
+  menu.forEach(s => {
+    s.groups = s.groups.map(g => ({ ...g, items: g.items.filter(i => i.show) })).filter(g => g.items.length);
+  });
+  const sections = menu.filter(s => s.groups.length);
+
+  // Highlight one link: longest href that prefixes the current URL, else the page's `active` key
+  const path = (typeof currentPath !== 'undefined' && currentPath) || '';
+  const allLinks = sections.flatMap(s => s.groups.flatMap(g => g.items.map(i => ({ i, s }))));
+  let hit = allLinks
+    .filter(({ i }) => path === i.href || path.startsWith(i.href + '/'))
+    .sort((a, b) => b.i.href.length - a.i.href.length)[0];
+  if (!hit) hit = allLinks.find(({ i }) => (i.keys || []).includes(active));
+  const activeHref    = hit ? hit.i.href : null;
+  const activeSection = hit ? hit.s.id : null;
+
+  // With no active page (Dashboard, Help), open the section that fits the user's role
+  const roleHome = { sales: 'sales', staff: 'sales', office: 'sales', service: 'service', hr: 'hr', employee: 'hr' };
+  const defaultOpen = activeSection || roleHome[user?.role] || null;
 %>
 
 <!-- Mobile Top Bar -->
@@ -66,177 +153,26 @@
       <i class="bi bi-speedometer2"></i><span class="fw-semibold">Dashboard</span>
     </a>
 
-    <!-- ── SALES ──────────────────────────────────── -->
-    <div class="sb-section-hdr" onclick="toggleSection('sales')">
-      <i class="bi bi-chevron-right sb-chevron <%= salesActive?'open':'' %>"></i>
-      <i class="bi bi-graph-up-arrow"></i>SALES
+    <% sections.forEach(sec => { const open = sec.id === defaultOpen; %>
+    <div class="sb-section" data-section="<%= sec.id %>" data-has-active="<%= sec.id === activeSection ? 1 : 0 %>">
+      <button type="button" class="sb-section-hdr<%= sec.id === activeSection ? ' has-active' : '' %>" onclick="toggleSection('<%= sec.id %>')" aria-expanded="<%= open %>" aria-controls="section-<%= sec.id %>">
+        <i class="bi <%= sec.icon %> sb-sec-icon"></i>
+        <span class="flex-grow-1 text-start"><%= sec.label %></span>
+        <i class="bi bi-chevron-right sb-chevron<%= open ? ' open' : '' %>"></i>
+      </button>
+      <div class="sb-section-body<%= open ? ' show' : '' %>" id="section-<%= sec.id %>">
+        <% sec.groups.forEach(g => { %>
+          <% if (g.label) { %><div class="sb-sub-label"><%= g.label %></div><% } %>
+          <% g.items.forEach(it => { %>
+          <a href="<%= it.href %>" class="sb-link nav-link<%= it.href === activeHref ? ' active' : '' %>" onclick="closeSidebarOnMobile()">
+            <i class="bi <%= it.icon %>"></i><span class="flex-grow-1"><%= it.label %></span>
+            <% if (it.badge > 0) { %><span class="badge bg-danger" style="font-size:9px"><%= it.badge %></span><% } %>
+          </a>
+          <% }) %>
+        <% }) %>
+      </div>
     </div>
-    <div class="sb-section-body<%= salesActive?' show':'' %>" id="section-sales">
-      <% if (isAdmin || isMgr || hasPerm('enquiries')) { %>
-      <a href="/enquiries" class="sb-link nav-link <%= active==='enquiries'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-funnel-fill"></i>Enquiries
-      </a>
-      <a href="/enquiries/pipeline" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-kanban"></i>Enquiry Pipeline
-      </a>
-      <a href="/enquiries/dashboard" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-bar-chart-fill"></i>Enquiry Dashboard
-      </a>
-      <% } %>
-      <% if (isAdmin || hasPerm('field_visit')) { %>
-      <a href="/visits" class="sb-link nav-link <%= active==='visits'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-geo-alt-fill"></i>Field Visits
-      </a>
-      <% } %>
-      <% if (isAdmin || hasPerm('customers')) { %>
-      <a href="/customers" class="sb-link nav-link <%= active==='customers'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-people-fill"></i>Customers
-      </a>
-      <% } %>
-      <% if (isAdmin || hasPerm('quotations')) { %>
-      <a href="/quotations" class="sb-link nav-link <%= active==='quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-file-earmark-text-fill"></i>Machine Quotations
-      </a>
-      <a href="/form-22" class="sb-link nav-link <%= active==='form22'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-patch-check-fill"></i>Form 22
-      </a>
-      <% } %>
-      <% if (isAdmin || isMgr) { %>
-      <a href="/salespersons" class="sb-link nav-link <%= active==='salespersons'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-person-badge-fill"></i>Salespersons
-      </a>
-      <a href="/salespersons/reports/summary" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-bar-chart-fill"></i>Sales Reports
-      </a>
-      <% } %>
-      <% if (isMgr) { %>
-      <a href="/machines" class="sb-link nav-link <%= active==='machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-sliders2"></i>Machine Master
-      </a>
-      <% } %>
-      <% if (isAdmin) { %>
-      <a href="/calculator" class="sb-link nav-link <%= active==='calculator'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-calculator-fill"></i>Profit Calculator
-      </a>
-      <% } %>
-    </div>
-
-    <!-- ── SPARES ─────────────────────────────────── -->
-    <div class="sb-section-hdr" onclick="toggleSection('spares')">
-      <i class="bi bi-chevron-right sb-chevron <%= sparesActive?'open':'' %>"></i>
-      <i class="bi bi-box-seam-fill"></i>SPARES
-    </div>
-    <div class="sb-section-body<%= sparesActive?' show':'' %>" id="section-spares">
-      <% if (isAdmin || hasPerm('sold_machines')) { %>
-      <a href="/sold-machines" class="sb-link nav-link <%= active==='sold-machines'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-hdd-rack-fill"></i>Sold Machines
-      </a>
-      <% } %>
-      <% if (isAdmin || hasPerm('spare_quotations')) { %>
-      <a href="/spare-quotations" class="sb-link nav-link <%= active==='spare-quotations'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-receipt-cutoff"></i>Spare Quotations
-      </a>
-      <% } %>
-      <% if (isAdmin || hasPerm('spare_parts')) { %>
-      <a href="/spare-parts" class="sb-link nav-link <%= active==='spare-parts'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-boxes"></i>Parts Master
-      </a>
-      <% } %>
-      <% if (isAdmin || hasPerm('spare_reports')) { %>
-      <a href="/spare-quotations/reports/summary" class="sb-link nav-link <%= active==='spare-reports'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-bar-chart-line-fill"></i>Parts Reports
-      </a>
-      <% } %>
-      <div class="sb-sub-label">Masters</div>
-      <% if (isAdmin || hasPerm('stock')) { %>
-      <a href="/stock" class="sb-link nav-link <%= active==='stock'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-boxes"></i>Stock Availability
-      </a>
-      <% } %>
-    </div>
-
-    <!-- ── HR ────────────────────────────────────── -->
-    <div class="sb-section-hdr" onclick="toggleSection('hr')">
-      <i class="bi bi-chevron-right sb-chevron <%= hrActive?'open':'' %>"></i>
-      <i class="bi bi-people-fill"></i>HR
-    </div>
-    <div class="sb-section-body<%= hrActive?' show':'' %>" id="section-hr">
-      <a href="/notifications" class="sb-link nav-link d-flex align-items-center <%= active==='notifications'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-bell-fill"></i><span class="flex-grow-1">Notifications</span>
-        <% if (unreadCount > 0) { %><span class="badge bg-danger" style="font-size:9px"><%= unreadCount %></span><% } %>
-      </a>
-      <% if (hasPerm('attendance')) { %>
-      <a href="/attendance" class="sb-link nav-link <%= active==='attendance'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-calendar-check-fill"></i>Attendance
-      </a>
-      <% } %>
-      <a href="/leaves" class="sb-link nav-link <%= active==='leaves'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-calendar-x-fill"></i>My Leaves
-      </a>
-      <a href="/salary" class="sb-link nav-link <%= active==='salary'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-cash-coin"></i>My Salary
-      </a>
-      <a href="/expenses" class="sb-link nav-link <%= active==='expenses'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-receipt"></i>Expenses
-      </a>
-      <% if (hasPerm('expense_claim') || isAdmin) { %>
-      <a href="/travel-expenses/new" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-truck"></i>New Travel Expense
-      </a>
-      <a href="/travel-expenses/my" class="sb-link nav-link <%= active==='travel-expenses'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-receipt-cutoff"></i>My Travel Expenses
-      </a>
-      <% } %>
-      <% if (hasPerm('expense_approval') || isAdmin) { %>
-      <a href="/travel-expenses/queue" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-check2-square"></i>Expense Approvals
-      </a>
-      <% } %>
-      <% if (isAdmin || isMgr) { %>
-      <a href="/travel-expenses/admin/rates" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-sliders"></i>Expense Rate Config
-      </a>
-      <% } %>
-      <a href="/id-card" class="sb-link nav-link <%= active==='id-card'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-credit-card-2-front-fill"></i>ID Card
-      </a>
-      <a href="/profile" class="sb-link nav-link <%= active==='profile'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-person-circle"></i>My Profile
-      </a>
-
-      <% if (hasPerm('hr_admin') || isAdmin) { %>
-      <div class="sb-sub-label">HR Admin</div>
-      <a href="/hr/dashboard" class="sb-link nav-link <%= active==='hr'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-grid-fill"></i>HR Dashboard
-      </a>
-      <a href="/hr/employees" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-person-lines-fill"></i>Employees
-      </a>
-      <a href="/hr/attendance" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-calendar-week-fill"></i>Attendance Report
-      </a>
-      <% if (hasPerm('leave_approval') || isAdmin) { %>
-      <a href="/hr/leaves" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-check2-square"></i>Leave Approvals
-      </a>
-      <% } %>
-      <% if (hasPerm('salary_admin') || isAdmin) { %>
-      <a href="/hr/salary" class="sb-link nav-link" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-wallet2"></i>Salary Manager
-      </a>
-      <% } %>
-      <% } %>
-
-      <% if (isAdmin) { %>
-      <div class="sb-sub-label">System</div>
-      <a href="/users" class="sb-link nav-link <%= active==='users'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-person-gear"></i>Users
-      </a>
-      <a href="/settings" class="sb-link nav-link <%= active==='settings'?'active':'' %>" onclick="closeSidebarOnMobile()">
-        <i class="bi bi-sliders"></i>Settings
-      </a>
-      <% } %>
-    </div>
+    <% }) %>
 
   </div><!-- /scrollable -->
 
@@ -262,27 +198,30 @@
 
 <style>
 /* Section headers */
+.sb-section { margin-top: 2px; }
 .sb-section-hdr {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 8px; margin-top: 2px;
-  font-size: 10.5px; font-weight: 800; letter-spacing: 1.3px;
-  color: rgba(255,255,255,0.45);
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 8px; background: none; border: 0;
+  font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
   cursor: pointer; border-radius: 6px;
   user-select: none; transition: background .15s, color .15s;
 }
-.sb-section-hdr:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7); }
-.sb-section-hdr i { font-size: 12px; }
+.sb-section-hdr:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
+.sb-section-hdr .sb-sec-icon { font-size: 14px; width: 16px; text-align: center; }
+.sb-section-hdr.has-active { color: #fff; }
+.sb-section-hdr .sb-chevron { font-size: 11px; }
 
 /* Chevron animation */
 .sb-chevron { transition: transform .2s; }
 .sb-chevron.open { transform: rotate(90deg); }
 
 /* Section body */
-.sb-section-body { display: none; padding-left: 4px; margin-bottom: 4px; }
+.sb-section-body { display: none; padding-left: 10px; margin: 0 0 4px 8px; border-left: 1px solid rgba(255,255,255,0.1); }
 .sb-section-body.show { display: block; }
 
 /* Nav links inside sections */
-.sb-link {
+#sidebar .sb-link {
   display: flex; align-items: center; gap: 8px;
   padding: 5px 8px; border-radius: 6px; margin-bottom: 1px;
   font-size: 13px; color: rgba(255,255,255,0.72) !important;
@@ -309,24 +248,35 @@
 </style>
 
 <script>
-function toggleSection(id) {
-  const body    = document.getElementById('section-' + id);
-  const chevrons = document.querySelectorAll('.sb-section-hdr');
-  // find the chevron for this section
-  const allBodies = document.querySelectorAll('.sb-section-body');
-  allBodies.forEach(b => {
-    if (b.id === 'section-' + id) {
-      const isOpen = b.classList.contains('show');
-      b.classList.toggle('show', !isOpen);
-      // flip the chevron inside the preceding sibling header
-      const hdr = b.previousElementSibling;
-      if (hdr) {
-        const ch = hdr.querySelector('.sb-chevron');
-        if (ch) ch.classList.toggle('open', !isOpen);
-      }
-    }
-  });
+// Collapsible sections. Each user's open/closed choice is remembered on this device;
+// the section holding the current page always opens.
+const SB_KEY = 'sb-open:<%= user ? user.id : 0 %>';
+function setSection(id, open) {
+  const body = document.getElementById('section-' + id);
+  if (!body) return;
+  body.classList.toggle('show', open);
+  const hdr = body.previousElementSibling;
+  hdr.setAttribute('aria-expanded', open);
+  hdr.querySelector('.sb-chevron').classList.toggle('open', open);
 }
+function saveSections() {
+  const open = [...document.querySelectorAll('.sb-section-body.show')].map(b => b.id.replace('section-', ''));
+  try { localStorage.setItem(SB_KEY, JSON.stringify(open)); } catch (e) {}
+}
+function toggleSection(id) {
+  const body = document.getElementById('section-' + id);
+  setSection(id, !body.classList.contains('show'));
+  saveSections();
+}
+(function restoreSections() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(SB_KEY)); } catch (e) {}
+  if (!Array.isArray(saved)) return; // first visit: keep the server's role-based default
+  document.querySelectorAll('.sb-section').forEach(sec => {
+    const id = sec.dataset.section;
+    setSection(id, saved.includes(id) || sec.dataset.hasActive === '1');
+  });
+})();
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('sidebar-open');
   document.getElementById('sidebarBackdrop').classList.toggle('show');
