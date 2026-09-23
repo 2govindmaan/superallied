@@ -1,0 +1,72 @@
+<%- include('partials/head', { title }) %>
+<%- include('partials/sidebar', { active: 'help', user }) %>
+<%
+  const typeMeta = {
+    new:      { label: 'New',      cls: 'bg-success' },
+    improved: { label: 'Improved', cls: 'bg-primary' },
+    fixed:    { label: 'Fixed',    cls: 'bg-warning text-dark' },
+    removed:  { label: 'Removed',  cls: 'bg-secondary' },
+  };
+  const total = changelog.reduce((n, d) => n + d.items.length, 0);
+  const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+%>
+<div class="main-content">
+  <div class="page-header d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-question-circle me-2 text-danger"></i>Help &amp; Updates</h4>
+    <span class="badge bg-light text-dark border"><%= total %> updates · <%= changelog.length %> dates</span>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 mb-3" id="typeFilter">
+    <button type="button" class="btn btn-sm btn-dark" data-type="all">All</button>
+    <% Object.entries(typeMeta).forEach(([k, m]) => { %>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-type="<%= k %>"><%= m.label %></button>
+    <% }) %>
+  </div>
+
+  <% changelog.forEach(day => { %>
+  <div class="card border-0 shadow-sm mb-3 help-day">
+    <div class="card-header bg-white fw-bold d-flex align-items-center gap-2">
+      <i class="bi bi-calendar3 text-danger"></i><%= fmtDate(day.date) %>
+      <span class="badge bg-light text-muted border ms-auto"><%= day.items.length %></span>
+    </div>
+    <div class="list-group list-group-flush">
+      <% day.items.forEach(it => { const m = typeMeta[it.type] || typeMeta.improved; %>
+      <div class="list-group-item help-item" data-type="<%= it.type %>">
+        <div class="d-flex align-items-start gap-2">
+          <span class="badge <%= m.cls %> mt-1" style="min-width:70px"><%= m.label %></span>
+          <div class="flex-grow-1">
+            <div class="fw-semibold"><%= it.title %></div>
+            <% if (it.details.length) { %>
+            <ul class="small text-muted mb-0 ps-3">
+              <% it.details.forEach(d => { %><li><%= d %></li><% }) %>
+            </ul>
+            <% } %>
+          </div>
+          <code class="small text-muted d-none d-sm-inline"><%= it.commit %></code>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% }) %>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.querySelectorAll('#typeFilter button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.type;
+    document.querySelectorAll('#typeFilter button').forEach(b => {
+      b.classList.toggle('btn-dark', b === btn);
+      b.classList.toggle('btn-outline-secondary', b !== btn);
+    });
+    document.querySelectorAll('.help-item').forEach(el => {
+      el.style.display = (t === 'all' || el.dataset.type === t) ? '' : 'none';
+    });
+    document.querySelectorAll('.help-day').forEach(day => {
+      const visible = [...day.querySelectorAll('.help-item')].some(el => el.style.display !== 'none');
+      day.style.display = visible ? '' : 'none';
+    });
+  });
+});
+</script>
+</body></html>

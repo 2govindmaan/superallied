@@ -851,6 +851,11 @@ app.get('/my-route', requireLogin, (req, res) => {
   res.render('my-route', { title: 'My Route Today', att, visits, today });
 });
 
+// Help: datewise list of app improvements (see changelog.js)
+app.get('/help', requireLogin, (req, res) => {
+  res.render('help', { title: 'Help & Updates', changelog: require('./changelog') });
+});
+
 // ── HR redirect ────────────────────────────────────────────────────────────────
 app.get('/hr', requireLogin, (req, res) => {
   const role = res.locals.user?.role;

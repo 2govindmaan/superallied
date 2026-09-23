@@ -12,7 +12,10 @@
     <i class="bi bi-list"></i>
   </button>
   <a href="/" class="app-title">SUPER ALLIED</a>
-  <a href="/logout" class="btn btn-sm btn-outline-light ms-auto">
+  <a href="/help" class="btn btn-sm btn-outline-light ms-auto me-2" title="Help & Updates" aria-label="Help & Updates">
+    <i class="bi bi-question-circle"></i>
+  </a>
+  <a href="/logout" class="btn btn-sm btn-outline-light">
     <i class="bi bi-box-arrow-right"></i>
   </a>
 </div>
@@ -248,6 +251,9 @@
       <% const roleBadge = {admin:'bg-danger',manager:'bg-warning text-dark',sales:'bg-info text-dark',office:'bg-primary',hr:'bg-purple',service:'bg-secondary',staff:'bg-secondary',employee:'bg-success'}; %>
       <span class="badge <%= roleBadge[user?.role] || 'bg-secondary' %>" style="font-size:9px"><%= (user?.role||'').toUpperCase() %></span>
     </div>
+    <a href="/help" class="btn btn-sm <%= active==='help'?'btn-light':'btn-outline-light' %> flex-shrink-0" title="Help & Updates" aria-label="Help & Updates">
+      <i class="bi bi-question-circle"></i>
+    </a>
     <a href="/logout" class="btn btn-sm btn-outline-light flex-shrink-0" title="Logout">
       <i class="bi bi-box-arrow-right"></i>
     </a>
